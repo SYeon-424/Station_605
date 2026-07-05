@@ -297,6 +297,31 @@ const LEVELS = [
       { id:'g_final', batteryId:'bat1', batterySlot:{x:700,y:296,w:26,h:34},
         plateA:{x:640,y:320,w:34,h:10}, plateB:{x:820,y:320,w:34,h:10}, gateX:880 }
     ]
+  },
+  { // STAGE 4 - 배터리 원정: 시작 지점 근처에 슬롯이 있고, 배터리는 계단 끝 저 높은 곳에 있다.
+    // 둘이 함께 발사대를 밟아 사라지는 발판 두 개를 릴레이로 밟고 올라가 배터리를 챙긴 뒤,
+    // 다시 시작 지점까지 들고 내려와 슬롯에 넣어야 최종 문의 압력판이 활성화된다.
+    width: 1100, height: 550, start:{x:50,y:170},
+    grounds: [
+      {x:0,   y:190, w:210, h:80},   // 좌상단 시작 발판 (배터리 슬롯이 바로 위에 떠 있음)
+      {x:815, y:160, w:265, h:90},   // 우상단 발판 (배터리 + 최종 게이트 구간)
+      {x:0,   y:490, w:1100, h:60}   // 맨 아래 바닥
+    ],
+    batteries: [ { id:'bat1', x:955, y:134, w:22, h:26 } ],
+    bridges: [],
+    movingPlatforms: [],
+    crumbles: [
+      { id:'c1', rect:{x:480,y:340,w:100,h:18}, warnMs:650, fallMs:2200 },
+      { id:'c2', rect:{x:620,y:250,w:100,h:18}, warnMs:650, fallMs:2200 }
+    ],
+    hazards: [],
+    launchPads: [
+      { id:'lp1', padA:{x:400,y:470,w:34,h:10}, padB:{x:450,y:470,w:34,h:10}, boost:-20 }
+    ],
+    gates: [
+      { id:'g_final', batteryId:'bat1', batterySlot:{x:60,y:110,w:26,h:34},
+        plateA:{x:40,y:170,w:44,h:10}, plateB:{x:900,y:470,w:44,h:10}, gateX:1015 }
+    ]
   }
 ];
 let currentLevel = 0;
