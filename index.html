@@ -634,11 +634,21 @@ function getActivePlatforms(bridgeStates, t){
   return solids;
 }
 
+// p.y는 항상 캐릭터의 "수직 중심점"을 의미한다 (반전 여부와 무관하게 고정된 기준).
+// 예전에는 일반 모드=발 위치, 반전 모드=머리 위치로 기준점 자체가 달라서,
+// 중력이 반전되는 바로 그 프레임에 몸통 전체가 순간적으로 캐릭터 키(PH)만큼
+// 밀려나 바닥/천장 블록과 잘못 겹쳐버리는 문제가 있었다 (그래서 한 번 움직여야
+// 겨우 빠져나오는 것처럼 보였음). 중심점 기준으로 통일하면 반전 순간에도 박스
+// 위치가 그대로라 그 자리에서 바로 수직으로 움직이기 시작한다.
+let diedThisFrame = false;
+
 function stepPhysics(bridgeStates, t, dt, inverted){
   inverted = !!inverted;
+  diedThisFrame = false;
   const p = myPlayer;
   const lvl = L();
   const sp = startPos();
+  const lvlH = lvl.height || 400;
   let moveX = 0;
   if(keys.has('ArrowLeft')||keys.has('KeyA')) moveX -= 1;
   if(keys.has('ArrowRight')||keys.has('KeyD')) moveX += 1;
@@ -654,10 +664,7 @@ function stepPhysics(bridgeStates, t, dt, inverted){
   if(inverted){ if(p.vy < -14) p.vy = -14; } else { if(p.vy > 14) p.vy = 14; }
 
   const solids = getActivePlatforms(bridgeStates, t);
-  // 일반 모드: p.y = 발 위치(바닥 기준). 반전 모드: p.y = 머리 위치(천장 기준)
-  const box = ()=> inverted
-    ? {x:p.x-PW/2, y:p.y, w:PW, h:PH}
-    : {x:p.x-PW/2, y:p.y-PH, w:PW, h:PH};
+  const box = ()=> ({x:p.x-PW/2, y:p.y-PH/2, w:PW, h:PH});
 
   p.x += p.vx * dt;
   let b = box();
@@ -674,19 +681,14 @@ function stepPhysics(bridgeStates, t, dt, inverted){
   lastLandedMpIndex = null;
   for(const s of solids){
     if(rectsOverlap(b,s)){
-      if(!inverted){
-        if(p.vy > 0){
-          if(!wasOnGround && p.vy > 3){ landingSquash = Math.min(1, p.vy / 14); spawnLandingBurst(p.x, s.y, '#4aa8ff', landingSquash); }
-          p.y = s.y; p.onGround = true; p.vy = 0; if(s.__mpIndex !== undefined) lastLandedMpIndex = s.__mpIndex;
-        }
-        else if(p.vy < 0){ p.y = s.y + s.h + PH; p.vy = 0; }
-      } else {
-        // 반전 모드: 위로 움직이다(vy<0) 천장 아래면에 닿으면 "착지"
-        if(p.vy < 0){
-          if(!wasOnGround && p.vy < -3){ landingSquash = Math.min(1, -p.vy / 14); spawnLandingBurst(p.x, s.y+s.h, '#4aa8ff', landingSquash); }
-          p.y = s.y + s.h; p.onGround = true; p.vy = 0; if(s.__mpIndex !== undefined) lastLandedMpIndex = s.__mpIndex;
-        }
-        else if(p.vy > 0){ p.y = s.y - PH; p.vy = 0; }
+      if(p.vy > 0){
+        // 위에서 아래로 내려오다 어떤 면의 윗면에 닿음 (일반 착지 / 반전 상태에서의 "충돌")
+        if(!wasOnGround && p.vy > 3){ landingSquash = Math.min(1, p.vy / 14); spawnLandingBurst(p.x, s.y, '#4aa8ff', landingSquash); }
+        p.y = s.y - PH/2; p.onGround = true; p.vy = 0; if(s.__mpIndex !== undefined) lastLandedMpIndex = s.__mpIndex;
+      } else if(p.vy < 0){
+        // 아래에서 위로 올라가다 어떤 면의 아랫면에 닿음 (반전 상태에서 천장에 착지 / 일반 상태에서 머리 부딪힘)
+        if(!wasOnGround && p.vy < -3){ landingSquash = Math.min(1, -p.vy / 14); spawnLandingBurst(p.x, s.y+s.h, '#4aa8ff', landingSquash); }
+        p.y = s.y + s.h + PH/2; p.onGround = true; p.vy = 0; if(s.__mpIndex !== undefined) lastLandedMpIndex = s.__mpIndex;
       }
       b = box();
     }
@@ -696,24 +698,24 @@ function stepPhysics(bridgeStates, t, dt, inverted){
   for(const hz of lvl.hazards){
     if(hazardActive(hz, t) && rectsOverlap(b, hz.rect)){
       p.x = sp.x; p.y = sp.y; p.vx = 0; p.vy = 0;
+      diedThisFrame = true;
       break;
     }
   }
 
-  if(!inverted && p.y > killY()){ p.x = sp.x; p.y = sp.y; p.vx = 0; p.vy = 0; }
-  if(inverted && p.y < -60){ p.x = sp.x; p.y = sp.y; p.vx = 0; p.vy = 0; }
-  if(!inverted){
-    if(p.y < PH) p.y = PH;
-  } else {
-    if(p.y > (lvl.height||400) - PH) p.y = (lvl.height||400) - PH;
-    if(p.y < 0) p.y = 0;
-  }
+  if(p.y > killY()){ p.x = sp.x; p.y = sp.y; p.vx = 0; p.vy = 0; diedThisFrame = true; }
+  if(p.y < -60){ p.x = sp.x; p.y = sp.y; p.vx = 0; p.vy = 0; diedThisFrame = true; }
+  if(p.y - PH/2 < 0) p.y = PH/2;
+  if(p.y + PH/2 > lvlH) p.y = lvlH - PH/2;
   if(p.x < PW/2) p.x = PW/2;
   if(p.x > lvl.width - PW/2) p.x = lvl.width - PW/2;
 }
 
+// 압력판/발판은 전부 "위에서 밟는" 형태이므로, 중심점 기준 y에서 발 위치(중심+PH/2)로
+// 환산해서 비교한다. 로컬/원격 위치 모두 동일한 좌표계를 쓰므로 그대로 적용 가능.
 function isOnPad(pos, rect){
-  return pos.x > rect.x && pos.x < rect.x+rect.w && pos.y >= rect.y-5 && pos.y <= rect.y+5;
+  const feetY = pos.y + PH/2;
+  return pos.x > rect.x && pos.x < rect.x+rect.w && feetY >= rect.y-5 && feetY <= rect.y+5;
 }
 
 const PIXEL_SIZES = [3, 4, 5, 6]; // discrete sizes so trail reads as blocky pixels, not smooth dots
@@ -770,28 +772,27 @@ function updateAndDrawParticles(dt){
   ctx.imageSmoothingEnabled = wasSmoothing;
 }
 
-function drawPlayer(x,y,color,label,squash,inverted){
+function drawPlayer(cx,cy,color,label,squash,inverted){
   squash = squash || 0;
   inverted = !!inverted;
   const w = PW * (1 + squash * 0.35);
   const h = PH * (1 - squash * 0.28);
+  const top = cy - h/2;
   ctx.save();
   ctx.fillStyle = color; ctx.shadowColor = color; ctx.shadowBlur = 8;
+  ctx.fillRect(cx-w/2, top, w, h);
+  ctx.shadowBlur = 0;
+  ctx.fillStyle = '#050810';
+  ctx.textAlign = 'center';
   if(inverted){
-    // y는 머리(천장에 붙은 쪽) 위치. 아래로 몸이 뻗어있음.
-    ctx.fillRect(x-w/2, y, w, h);
-    ctx.shadowBlur = 0;
-    ctx.fillStyle = '#050810';
-    ctx.fillRect(x-6, y+h-12, 4,4); ctx.fillRect(x+2, y+h-12, 4,4);
-    ctx.fillStyle = '#c7d1d9'; ctx.font = '10px monospace'; ctx.textAlign = 'center';
-    ctx.fillText(label + ' ▲', x, y+h+14);
+    // 반전 상태: 천장에 발이 붙어있고 머리는 아래로 매달린 모습 → 눈은 아래쪽에
+    ctx.fillRect(cx-6, top+h-12, 4,4); ctx.fillRect(cx+2, top+h-12, 4,4);
+    ctx.fillStyle = '#c7d1d9'; ctx.font = '10px monospace';
+    ctx.fillText(label + ' ▲', cx, top+h+14);
   } else {
-    ctx.fillRect(x-w/2, y-h, w, h);
-    ctx.shadowBlur = 0;
-    ctx.fillStyle = '#050810';
-    ctx.fillRect(x-6, y-h+8, 4,4); ctx.fillRect(x+2, y-h+8, 4,4);
-    ctx.fillStyle = '#c7d1d9'; ctx.font = '10px monospace'; ctx.textAlign = 'center';
-    ctx.fillText(label, x, y-PH-6);
+    ctx.fillRect(cx-6, top+8, 4,4); ctx.fillRect(cx+2, top+8, 4,4);
+    ctx.fillStyle = '#c7d1d9'; ctx.font = '10px monospace';
+    ctx.fillText(label, cx, top-6);
   }
   ctx.textAlign = 'left';
   ctx.restore();
@@ -931,7 +932,7 @@ function drawLevel(remotePositions, bridgeStates, t, dt){
       const pos = heldBy === myName ? myPlayer : remotePositions[heldBy];
       if(pos){
         const holderInverted = computeInversion(heldBy, allPosForBattery);
-        const by = holderInverted ? pos.y + PH + 16 : pos.y - PH - 16;
+        const by = holderInverted ? pos.y + PH/2 + 16 : pos.y - PH/2 - 16;
         drawBattery(pos.x, by);
       }
     } else {
@@ -1063,6 +1064,15 @@ function gameLoop(){
   stepPhysics(bridgeStates, t, dt, iAmInverted);
   riddenMpIndex = lastLandedMpIndex;
 
+  if(diedThisFrame){
+    (lvl.batteries||[]).forEach(bat=>{
+      if(roomRowState.batteryHeld && roomRowState.batteryHeld[bat.id] === myName){
+        db.ref(`rooms605/${roomCode}/state/batteryHeld/${bat.id}`).remove();
+        roomRowState.batteryHeld[bat.id] = null;
+      }
+    });
+  }
+
   lvl.bridges.forEach(b=>{
     if(b.mode === 'toggle' && b.switchPads.some(pad=>isOnPad(myPlayer,pad)) && !(roomRowState.bridgesOn && roomRowState.bridgesOn[b.id])){
       db.ref(`rooms605/${roomCode}/state/bridgesOn/${b.id}`).set(true);
@@ -1091,9 +1101,7 @@ function gameLoop(){
     const alreadyDelivered = gate && roomRowState.batteryCharged && roomRowState.batteryCharged[gate.id];
     if(alreadyDelivered) return;
     const heldBy = roomRowState.batteryHeld && roomRowState.batteryHeld[bat.id];
-    const myBox = iAmInverted
-      ? { x: myPlayer.x-PW/2, y: myPlayer.y, w:PW, h:PH }
-      : { x: myPlayer.x-PW/2, y: myPlayer.y-PH, w:PW, h:PH };
+    const myBox = { x: myPlayer.x-PW/2, y: myPlayer.y-PH/2, w:PW, h:PH };
     if(!heldBy){
       if(rectsOverlap(myBox, bat)){
         db.ref(`rooms605/${roomCode}/state/batteryHeld/${bat.id}`).transaction(cur=> cur ? cur : myName);
