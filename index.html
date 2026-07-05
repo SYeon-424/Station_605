@@ -1,0 +1,1330 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3210143044779228"
+     crossorigin="anonymous"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover, user-scalable=no">
+<title>정거장 605</title>
+<meta name="theme-color" content="#080b10">
+<meta name="description" content="정거장 605 — 협동 탈출 플랫포머">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png" sizes="192x192" type="image/png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="정거장 605">
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<style>
+  :root{
+    --bg:#080b10; --panel:#0e131b; --line:#1c2530;
+    --green:#4ade80; --green-dim:#2f6b47; --amber:#f5a524; --red:#e34848; --slate:#8a98a8; --white:#eef2f5;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--white);font-family:'IBM Plex Mono',monospace;min-height:100%;}
+  #app{position:relative;max-width:860px;margin:0 auto;padding:24px 16px 50px;}
+  h1,h2,h3{font-family:'Share Tech Mono',monospace;letter-spacing:0.5px;margin:0;}
+  .glow{color:var(--green);text-shadow:0 0 6px rgba(74,222,128,0.5);}
+  .muted{color:var(--slate);}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:20px;margin-bottom:14px;}
+  .center{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:70vh;text-align:center;}
+  textarea, input[type=text]{
+    background:#0a0f16;border:1px solid var(--line);color:var(--green);
+    font-family:'Share Tech Mono',monospace;font-size:14px;padding:10px 12px;border-radius:4px;width:100%;outline:none;
+  }
+  textarea{min-height:110px;resize:vertical;font-size:12px;}
+  button{
+    background:transparent;border:1px solid var(--green-dim);color:var(--green);
+    font-family:'IBM Plex Mono',monospace;font-weight:600;padding:10px 18px;border-radius:4px;cursor:pointer;
+  }
+  button:hover{background:rgba(74,222,128,0.1);border-color:var(--green);}
+  .top-bar{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px;}
+  .players{display:flex;gap:10px;flex-wrap:wrap;font-size:12px;}
+  .player-chip{border:1px solid var(--line);border-radius:12px;padding:4px 10px;display:flex;align-items:center;gap:6px;}
+  .dot{width:8px;height:8px;border-radius:50%;}
+  .small{font-size:12px;color:var(--slate);}
+  a.link-reset{color:var(--slate);text-decoration:underline;cursor:pointer;font-size:12px;}
+  canvas{display:block;margin:0 auto;max-width:100%;max-height:min(66vh, 620px);width:auto;height:auto;background:#060911;border-radius:6px;border:1px solid var(--line);}
+  .controls-hint{margin-top:10px;font-size:12px;color:var(--slate);text-align:center;}
+  .clear-banner{
+    position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+    background:rgba(8,11,16,0.92);border:1px solid var(--green);color:var(--green);
+    padding:20px 34px;border-radius:8px;font-family:'Share Tech Mono',monospace;font-size:22px;text-align:center;
+    animation: bannerPop .35s cubic-bezier(.34,1.56,.64,1) both;
+  }
+  @keyframes bannerPop{
+    from{ opacity:0; transform:translate(-50%,-50%) scale(.7); }
+    to{ opacity:1; transform:translate(-50%,-50%) scale(1); }
+  }
+  .fade-in{ animation: fadeInUp .32s ease both; }
+  @keyframes fadeInUp{
+    from{ opacity:0; transform:translateY(8px); }
+    to{ opacity:1; transform:translateY(0); }
+  }
+  .canvas-wrap{position:relative;}
+  .status-pill{font-size:11px;padding:3px 9px;border-radius:10px;border:1px solid var(--line);}
+  .status-pill.connected{color:var(--green);border-color:var(--green-dim);}
+  .status-pill.pending{color:var(--amber);}
+
+  .station-title{display:flex;align-items:center;gap:14px;flex-wrap:wrap;}
+  .oxy-wrap{display:flex;align-items:center;gap:8px;}
+  .oxy-label{font-size:10px;color:var(--slate);letter-spacing:1px;}
+  .oxy-bar-outer{width:120px;height:12px;border:1px solid var(--line);border-radius:3px;background:#0a0f16;overflow:hidden;position:relative;}
+  .oxy-bar-inner{height:100%;width:100%;background:var(--green);box-shadow:0 0 6px rgba(74,222,128,0.6);transition:width 0.3s linear, background-color 0.3s linear;}
+  .oxy-bar-inner.critical{ animation: oxyPulse .8s ease-in-out infinite; }
+  @keyframes oxyPulse{
+    0%,100%{ box-shadow:0 0 6px rgba(227,72,72,0.6); opacity:1; }
+    50%{ box-shadow:0 0 16px rgba(227,72,72,0.95); opacity:.65; }
+  }
+  .oxy-time{font-family:'Share Tech Mono',monospace;font-size:12px;color:var(--green);min-width:38px;}
+
+  .sf-overlay{
+    position:fixed; inset:0; background:rgba(4,6,9,0.88); z-index:50;
+    display:flex; align-items:center; justify-content:center; padding:20px;
+  }
+  .sf-panel{
+    max-width:480px; width:100%; background:var(--panel); border:1px solid var(--green-dim);
+    border-radius:8px; padding:26px 28px; box-shadow:0 0 30px rgba(74,222,128,0.12);
+  }
+  .sf-panel.danger{border-color:var(--red); box-shadow:0 0 30px rgba(227,72,72,0.18);}
+  .sf-panel-title{font-family:'Share Tech Mono',monospace; font-size:20px; letter-spacing:1px; margin-bottom:14px;}
+  .sf-panel-title.ok{color:var(--green); text-shadow:0 0 8px rgba(74,222,128,0.5);}
+  .sf-panel-title.danger{color:var(--red); text-shadow:0 0 8px rgba(227,72,72,0.5);}
+  .sf-body{font-size:13px; line-height:1.7; color:var(--white); margin-bottom:16px;}
+  .sf-hr{border:none;border-top:1px dashed var(--line);margin:14px 0;}
+  .ready-row{display:flex; justify-content:space-between; align-items:center; padding:8px 0; font-size:13px;}
+  .ready-tag{font-size:11px; padding:3px 10px; border-radius:10px; border:1px solid var(--line);}
+  .ready-tag.ready{color:var(--green); border-color:var(--green-dim);}
+  .ready-tag.wait{color:var(--amber); border-color:var(--amber);}
+  .r-key{display:inline-block; border:1px solid var(--green-dim); border-radius:4px; padding:2px 10px; margin:0 3px; color:var(--green); font-family:'Share Tech Mono',monospace;}
+  .blink{animation:blinkAnim 1.2s steps(2,start) infinite;}
+  @keyframes blinkAnim{ to{ visibility:hidden; } }
+
+  .mobile-only{ display:none; }
+  .mobile-controls{
+    display:none;
+    position:fixed; left:0; right:0; bottom:0; z-index:40;
+    padding:14px 18px calc(14px + env(safe-area-inset-bottom));
+    justify-content:space-between; align-items:center;
+    pointer-events:none;
+  }
+  .mc-move{display:flex; gap:clamp(10px,3.5vw,18px); pointer-events:auto;}
+  .mc-btn{
+    width:clamp(64px, 18vw, 92px); height:clamp(64px, 18vw, 92px); border-radius:50%;
+    background:rgba(14,19,27,0.85); border:1px solid var(--green-dim); color:var(--green);
+    font-family:'Share Tech Mono',monospace; font-size:clamp(20px, 6vw, 28px);
+    display:flex; align-items:center; justify-content:center;
+    -webkit-tap-highlight-color:transparent; user-select:none; touch-action:none;
+    pointer-events:auto;
+  }
+  .mc-btn:active{ background:rgba(74,222,128,0.18); border-color:var(--green); }
+  .mc-jump{
+    width:clamp(78px, 23vw, 112px); height:clamp(78px, 23vw, 112px);
+    font-size:clamp(13px, 3.6vw, 16px); font-weight:600; letter-spacing:0.5px;
+    border-color:var(--amber); color:var(--amber);
+  }
+  .mc-jump:active{ background:rgba(245,165,36,0.18); border-color:var(--amber); }
+
+  @media (hover:none) and (pointer:coarse){
+    .desktop-only{ display:none !important; }
+    .mobile-only{ display:block; }
+    .mobile-controls{ display:flex; }
+    #app{ padding-bottom:calc(clamp(78px, 23vw, 112px) + 28px + env(safe-area-inset-bottom)); }
+  }
+
+  @media (max-width:480px){
+    #app{ padding-left:10px; padding-right:10px; }
+    .top-bar{ gap:8px; }
+    .station-title h2{ font-size:15px; }
+    .oxy-bar-outer{ width:clamp(70px,22vw,120px); }
+    #stageIndicator{ font-size:14px !important; }
+    .player-chip{ font-size:11px; padding:3px 8px; }
+    .status-pill{ font-size:10px; }
+  }
+
+  /* 광고 배너 자리 — 실제 수익화하려면 애드센스 등에서 발급받은 스크립트 코드를
+     #adBannerSlot 안에 넣으면 됩니다. 데스크탑은 하단 고정, 모바일은 하단 조작
+     버튼과 겹치므로 상단으로 옮기고 그만큼 본문을 아래로 밀어냅니다. */
+  #adBanner{
+    position:fixed; left:0; right:0; bottom:0; z-index:35;
+    background:#0e131b; border-top:1px solid var(--line);
+    text-align:center; padding:6px 12px; font-size:11px; color:var(--slate);
+    height:64px; overflow:hidden; display:flex; align-items:center; justify-content:center;
+  }
+  #adBanner a{ color:var(--slate); }
+  @media (hover:none) and (pointer:coarse){
+    #adBanner{
+      bottom:auto; top:0;
+      border-top:none; border-bottom:1px solid var(--line);
+      height:auto; min-height:56px;
+      padding-top:calc(6px + env(safe-area-inset-top));
+    }
+    #app{ padding-top:calc(60px + env(safe-area-inset-top)); }
+  }
+</style>
+</head>
+<body>
+<div id="adBanner">
+  <div id="adBannerSlot">
+    <ins class="adsbygoogle"
+         style="display:block"
+         data-ad-client="ca-pub-3210143044779228"
+         data-ad-slot="3036289071"
+         data-ad-format="auto"
+         data-full-width-responsive="true"></ins>
+    <script>
+      (adsbygoogle = window.adsbygoogle || []).push({});
+    </script>
+  </div>
+</div>
+<audio id="bgm" loop preload="auto"></audio>
+<audio id="sfxJump" preload="auto"></audio>
+<audio id="sfxOpen" preload="auto"></audio>
+<div id="app"></div>
+
+<script>
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyD3OxeXD_vrAdjl3SyquodWecERUIKArvY",
+  authDomain: "station706-75de3.firebaseapp.com",
+  databaseURL: "https://station706-75de3-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "station706-75de3",
+  storageBucket: "station706-75de3.firebasestorage.app",
+  messagingSenderId: "661243380855",
+  appId: "1:661243380855:web:2ccb178dc80c4cf5d73272"
+};
+
+let db = null;
+let myName = "", roomCode = "";
+let canvas, ctx, rafId;
+let posSendTimer = null;
+let keys = new Set();
+let lastRemoteSnapshots = {};
+let onlineNames = new Set();
+let realtimeRefs = {};
+let myPlayerRef = null;
+let roomRowState = { level:0, bridgesOn:{}, gatesOpen:{}, crumbleStart:{}, ready:{}, gameStarted:false, startTime:null, dead:false, deathReason:null, won:false };
+
+let gamePhase = 'briefing';
+let oxygenTriggerSent = false;
+const OXYGEN_TOTAL_MS = 10 * 60 * 1000;
+
+function defaultRoomState(){
+  return { level:0, bridgesOn:{}, gatesOpen:{}, crumbleStart:{}, ready:{}, gameStarted:false, startTime:null, dead:false, deathReason:null, won:false };
+}
+
+const GRAVITY = 0.65, JUMP_V = -11.5, MOVE_SPEED = 3.4;
+const PW = 22, PH = 30;
+const START_POS = {x:40,y:290};
+
+function startPos(){ return L().start || START_POS; }
+function killY(){ return (L().height || 400) + 40; }
+
+const LEVELS = [
+  { // STAGE 1 - 605 워밍업: 릴레이 브릿지 + 게이트 (크게 어렵지 않게)
+    width: 850, height: 400,
+    grounds: [ {x:0,y:340,w:220,h:60}, {x:480,y:340,w:370,h:60} ],
+    bridges: [
+      { id:'b1', rect:{x:220,y:340,w:260,h:20}, mode:'hold',
+        switchPads:[ {x:70,y:320,w:56,h:10}, {x:500,y:320,w:56,h:10} ] }
+    ],
+    movingPlatforms: [], crumbles: [], hazards: [], launchPads: [],
+    gates: [
+      { id:'g1', plateA:{x:620,y:320,w:34,h:10}, plateB:{x:720,y:320,w:34,h:10}, gateX:800 }
+    ]
+  }
+  // 스테이지 2부터는 같이 하나씩 디자인해서 추가할 예정
+];
+let currentLevel = 0;
+let advancing = false;
+let launchArmed = {};
+let localPadTouch = {};
+let pendingLaunchFire = {};
+let lastSeenLaunchTs = {};
+let riddenMpIndex = null;
+let riddenMpPrevRect = null;
+let lastLandedMpIndex = null;
+let landingSquash = 0; // 0~1, decays each frame; used for a brief squash/stretch on hard landings
+let particles = [];
+function L(){ return LEVELS[currentLevel]; }
+
+function getMovingPlatformRect(mp, t){
+  const frac = (Math.sin((t / mp.period) * Math.PI * 2) + 1) / 2;
+  const x = mp.x0 + (mp.x1 - mp.x0) * frac;
+  const y = mp.y0 + (mp.y1 - mp.y0) * frac;
+  return { x, y, w: mp.w, h: mp.h };
+}
+
+function crumbleElapsed(c, t){
+  const start = roomRowState.crumbleStart && roomRowState.crumbleStart[c.id];
+  if(!start) return null;
+  return t - start;
+}
+function crumbleIsSolid(c, t){
+  const elapsed = crumbleElapsed(c, t);
+  if(elapsed === null) return true;
+  if(elapsed < c.warnMs) return true;
+  if(elapsed < c.warnMs + c.fallMs) return false;
+  return true;
+}
+function crumbleIsWarning(c, t){
+  const elapsed = crumbleElapsed(c, t);
+  return elapsed !== null && elapsed < c.warnMs;
+}
+function hazardActive(hz, t){
+  const phase = (t % hz.period) / hz.period;
+  return phase < hz.activeFraction;
+}
+
+let myPlayer = { x: START_POS.x, y: START_POS.y, vx:0, vy:0, onGround:false };
+
+function escapeHtml(s){ return s.replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+function playBgm(){
+  const bgm = document.getElementById('bgm');
+  if(!bgm) return;
+  bgmRealPlayRequested = true;
+  bgm.currentTime = 0;
+  bgm.play().catch(err=>{
+    console.warn('[BGM] 재생 실패:', err && err.name, err && err.message,
+      '— BGM.mp3 파일이 html과 같은 폴더에 있는지, 자동재생이 차단된 건 아닌지 확인해보세요.');
+  });
+}
+function stopBgm(){
+  bgmRealPlayRequested = false;
+  const bgm = document.getElementById('bgm');
+  if(!bgm) return;
+  bgm.pause();
+  bgm.currentTime = 0;
+}
+
+function playSfx(id){
+  const el = document.getElementById(id);
+  if(!el) return;
+  el.currentTime = 0;
+  el.play().catch(()=>{ /* e.g. blocked before first user gesture; harmless */ });
+}
+
+function renderLogin(){
+  const app = document.getElementById('app');
+  const configured = !FIREBASE_CONFIG.apiKey.includes("YOUR_API_KEY");
+  app.innerHTML = `
+    <div class="center fade-in">
+      <h1 class="glow" style="font-size:28px;">정거장 605</h1>
+      <div class="muted" style="margin-bottom:24px;">Stage 1~15</div>
+      ${!configured ? `<div class="card" style="max-width:380px;border-color:var(--amber);color:var(--amber);">FIREBASE_CONFIG가 아직 설정되지 않았어요. 코드 상단 값을 콘솔에서 복사한 값으로 바꿔주세요.</div>` : ''}
+      <div class="card" style="width:100%;max-width:380px;text-align:left;">
+        <div class="small" style="margin-bottom:6px;">닉네임</div>
+        <input type="text" id="nameInput" placeholder="예: 은수" style="margin-bottom:14px;">
+        <div class="small" style="margin-bottom:6px;">방 코드 (친구와 동일하게)</div>
+        <input type="text" id="roomInput" placeholder="예: NEBULA7">
+        <button id="enterBtn" style="width:100%;margin-top:16px;" ${configured?'':'disabled'}>입장</button>
+      </div>
+    </div>
+  `;
+  document.getElementById('enterBtn').onclick = async ()=>{
+    const n = document.getElementById('nameInput').value.trim();
+    const r = document.getElementById('roomInput').value.trim().toUpperCase();
+    if(!n || !r) return;
+    myName = n; roomCode = r;
+    if(!firebase.apps.length){ firebase.initializeApp(FIREBASE_CONFIG); }
+    db = firebase.database();
+
+    const snap = await db.ref(`rooms605/${roomCode}/state`).once('value');
+    const existing = snap.val();
+    if(existing && existing.gameStarted && !existing.dead && !existing.won){
+      alert("이 방은 이미 게임이 진행 중입니다. 게임이 끝난 뒤 다시 시도해주세요.");
+      return;
+    }
+
+    await db.ref(`rooms605/${roomCode}/players`).remove();
+    await db.ref(`rooms605/${roomCode}/state`).set(defaultRoomState());
+    initGame();
+  };
+}
+
+function renderBriefing(){
+  const app = document.getElementById('app');
+  app.innerHTML = `
+    <div class="center fade-in">
+      <div class="sf-panel" style="max-width:520px;">
+        <div class="sf-panel-title ok">// 비상 방송: 정거장 605 //</div>
+        <div class="sf-body">
+          정거장 706에서 발사된 탈출 포드가 궤도 계산 오류로 항로를 벗어나,
+          지구와 더 가까운 궤도를 돌던 노후 정거장 <b>605</b>와 충돌했습니다.<br>
+          충돌 충격으로 605의 생명유지 장치까지 파손되어, 남은 산소는 이제
+          <b class="glow">10분</b>뿐입니다.<br>
+          탈출 포드까지 가는 통로에는 15개의 격리 구역이 있으며,
+          각 구역의 문은 두 사람이 동시에 압력판을 밟아야 열립니다.<br>
+          두 번째 탈출이다. 이번엔 반드시 살아서 나가라.
+        </div>
+        <div class="sf-hr"></div>
+        <div class="small" style="margin-bottom:6px;letter-spacing:1px;">READY CHECK</div>
+        <div id="readyList"></div>
+        <div class="sf-hr"></div>
+        <div class="small blink desktop-only" style="text-align:center;">
+          <span class="r-key">R</span> 키를 눌러 준비 완료
+        </div>
+        <button id="mobileReadyBtn" class="mobile-only" style="width:100%;margin-top:10px;">준비 완료</button>
+        <div style="text-align:center;margin-top:14px;">
+          <a class="link-reset" id="leaveLinkBriefing">방 나가기 (코드 반납)</a>
+        </div>
+      </div>
+    </div>
+  `;
+  renderReadyList();
+  const leaveLink = document.getElementById('leaveLinkBriefing');
+  if(leaveLink) leaveLink.onclick = ()=>{ if(confirm("방을 나갈까요? 아무도 남지 않으면 이 코드는 완전히 초기화됩니다.")) leaveRoom(); };
+  const mobileReadyBtn = document.getElementById('mobileReadyBtn');
+  if(mobileReadyBtn) mobileReadyBtn.onclick = ()=> toggleMyReady();
+}
+
+function renderReadyList(){
+  const listEl = document.getElementById('readyList');
+  if(!listEl) return;
+  const names = Array.from(onlineNames);
+  if(names.length === 0){
+    listEl.innerHTML = `<div class="small">연결 대기 중...</div>`;
+    return;
+  }
+  const ready = roomRowState.ready || {};
+  listEl.innerHTML = names.map(name=>{
+    const isReady = !!ready[name];
+    return `
+      <div class="ready-row">
+        <span>${escapeHtml(name)}${name===myName ? ' <span class="small">(나)</span>' : ''}</span>
+        <span class="ready-tag ${isReady?'ready':'wait'}">${isReady ? 'READY' : '대기 중'}</span>
+      </div>
+    `;
+  }).join('');
+}
+
+// browsers only allow audio.play() reliably inside a direct user gesture.
+// "둘 다 준비완료"는 나중에 비동기로(상대방 신호로) 오는 경우가 많아서 그 시점엔
+// 제스처가 아니라고 판단해 재생이 막힐 수 있음 — 그래서 R/버튼을 누르는 이 순간에
+// 미리 한 번 play()+즉시 pause()로 "잠금 해제"만 해둔다. 실제 재생은 이후 playBgm()에서.
+let bgmRealPlayRequested = false; // true once the game has actually asked to play (not just the unlock priming)
+
+function unlockBgm(){
+  const bgm = document.getElementById('bgm');
+  if(!bgm || bgm.dataset.unlocked) return;
+  bgm.play().then(()=>{
+    bgm.dataset.unlocked = '1';
+    // if the real game-start playback already kicked in while this promise was
+    // pending, do NOT pause it — that's exactly what caused the AbortError
+    if(!bgmRealPlayRequested){
+      bgm.pause();
+      bgm.currentTime = 0;
+    }
+  }).catch(()=>{ /* still locked; playBgm() will just try again later */ });
+}
+
+function toggleMyReady(){
+  if(!db) return;
+  unlockBgm();
+  const cur = !!(roomRowState.ready && roomRowState.ready[myName]);
+  db.ref(`rooms605/${roomCode}/state/ready/${myName}`).set(!cur);
+}
+
+function maybeLaunchGame(){
+  const names = Array.from(onlineNames);
+  if(names.length === 0) return;
+  const ready = roomRowState.ready || {};
+  const allReady = names.every(n=>ready[n]);
+  if(!allReady) return;
+  db.ref(`rooms605/${roomCode}/state`).transaction(current=>{
+    if(!current) return current;
+    if(current.gameStarted) return current;
+    current.gameStarted = true;
+    current.startTime = Date.now();
+    return current;
+  });
+}
+
+function renderShell(){
+  const app = document.getElementById('app');
+  app.innerHTML = `
+    <div class="top-bar fade-in">
+      <div class="station-title">
+        <div><h2 class="glow" style="font-size:18px;">정거장 605</h2><div class="small">ROOM ${escapeHtml(roomCode)}</div></div>
+        <div class="oxy-wrap">
+          <span class="oxy-label">OXYGEN</span>
+          <div class="oxy-bar-outer"><div class="oxy-bar-inner" id="oxyBarInner"></div></div>
+          <span class="oxy-time" id="oxyTimeText">10:00</span>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px;">
+        <span id="stageIndicator" style="font-family:'Share Tech Mono',monospace;font-size:18px;color:var(--amber);text-shadow:0 0 6px rgba(245,165,36,0.4);letter-spacing:1px;">STAGE 1/15</span>
+        <span class="status-pill pending" id="statusPill">연결 중...</span>
+        <div class="players" id="playerChips"></div>
+        <a class="link-reset" id="leaveLinkShell" style="white-space:nowrap;">나가기</a>
+      </div>
+    </div>
+    <div class="canvas-wrap fade-in">
+      <canvas id="gameCanvas" width="${L().width}" height="${L().height}"></canvas>
+      <div id="clearBanner"></div>
+    </div>
+    <div class="controls-hint desktop-only">← → 이동 · Space / ↑ 점프 &nbsp;|&nbsp; 협동 플랫포머</div>
+    <div class="mobile-controls mobile-only">
+      <div class="mc-move">
+        <button class="mc-btn" id="mcLeft" aria-label="left">◀</button>
+        <button class="mc-btn" id="mcRight" aria-label="right">▶</button>
+      </div>
+      <button class="mc-btn mc-jump" id="mcJump" aria-label="jump">JUMP</button>
+    </div>
+    <div style="display:flex;justify-content:center;align-items:center;gap:8px;margin-top:10px;flex-wrap:wrap;" class="desktop-only">
+      <a class="link-reset" id="resetLink">방 전체 초기화 (스테이지 1부터)</a>
+      <span class="small">|</span>
+      <span class="small">디버그: 스테이지</span>
+      <input type="text" id="jumpStageInput" placeholder="1-15" style="width:60px;padding:4px 8px;font-size:12px;">
+      <button id="jumpStageBtn" style="padding:4px 10px;font-size:12px;">이동</button>
+    </div>
+  `;
+  canvas = document.getElementById('gameCanvas');
+  ctx = canvas.getContext('2d');
+  document.getElementById('resetLink').onclick = async ()=>{
+    if(!confirm("이 방을 스테이지 1부터 초기화할까요?")) return;
+    await db.ref(`rooms605/${roomCode}/state`).set(defaultRoomState());
+  };
+  document.getElementById('leaveLinkShell').onclick = ()=>{
+    if(confirm("방을 나갈까요? 아무도 남지 않으면 이 코드는 완전히 초기화됩니다.")) leaveRoom();
+  };
+  document.getElementById('jumpStageBtn').onclick = async ()=>{
+    const n = parseInt(document.getElementById('jumpStageInput').value, 10);
+    if(!n || n < 1 || n > LEVELS.length) return;
+    const pw = prompt("디버그 비밀번호를 입력하세요");
+    if(pw !== "4444"){ alert("비밀번호가 틀렸습니다."); return; }
+    const snap = await db.ref(`rooms605/${roomCode}/state`).once('value');
+    const current = snap.val() || {};
+    const base = defaultRoomState();
+    base.level = n-1;
+    base.gameStarted = true;
+    base.startTime = current.startTime || Date.now();
+    base.ready = current.ready || {};
+    await db.ref(`rooms605/${roomCode}/state`).set(base);
+  };
+  setupMobileControls();
+}
+
+function updatePlayerChips(){
+  const chips = document.getElementById('playerChips');
+  if(!chips) return;
+  const names = Array.from(onlineNames);
+  chips.innerHTML = names.map(name=>{
+    const c = name === myName ? '#4ade80' : '#f5a524';
+    return `<div class="player-chip"><span class="dot" style="background:${c};box-shadow:0 0 5px ${c};"></span>${escapeHtml(name)}</div>`;
+  }).join('');
+}
+
+function updateStageIndicator(){
+  const el = document.getElementById('stageIndicator');
+  if(el) el.textContent = `STAGE ${currentLevel+1}/${LEVELS.length}`;
+}
+
+function rectsOverlap(a,b){ return a.x < b.x+b.w && a.x+a.w > b.x && a.y < b.y+b.h && a.y+a.h > b.y; }
+
+function isBridgeActive(bridge, myPos, remotePositions){
+  if(bridge.mode === 'toggle'){
+    return !!(roomRowState.bridgesOn && roomRowState.bridgesOn[bridge.id]);
+  }
+  const onIt = (pos)=> bridge.switchPads.some(pad => isOnPad(pos, pad));
+  if(onIt(myPos)) return true;
+  return Object.values(remotePositions).some(onIt);
+}
+
+function getActivePlatforms(bridgeStates, t){
+  const lvl = L();
+  const solids = [ ...lvl.grounds ];
+  lvl.bridges.forEach(b=>{
+    solids.push(...b.switchPads);
+    if(bridgeStates[b.id]) solids.push(b.rect);
+  });
+  lvl.movingPlatforms.forEach((mp,idx)=>{
+    const r = getMovingPlatformRect(mp, t);
+    r.__mpIndex = idx;
+    solids.push(r);
+  });
+  lvl.crumbles.forEach(c=>{
+    if(crumbleIsSolid(c, t)) solids.push(c.rect);
+  });
+  lvl.launchPads.forEach(lp=>{
+    solids.push(lp.padA, lp.padB);
+  });
+  lvl.gates.forEach(g=>{
+    solids.push(g.plateA, g.plateB);
+    const open = roomRowState.gatesOpen && roomRowState.gatesOpen[g.id];
+    if(!open) solids.push({x:g.gateX, y:0, w:12, h: (lvl.height||400)-60});
+  });
+  return solids;
+}
+
+function stepPhysics(bridgeStates, t, dt){
+  const p = myPlayer;
+  const lvl = L();
+  const sp = startPos();
+  let moveX = 0;
+  if(keys.has('ArrowLeft')||keys.has('KeyA')) moveX -= 1;
+  if(keys.has('ArrowRight')||keys.has('KeyD')) moveX += 1;
+  p.vx = moveX * MOVE_SPEED;
+  if((keys.has('Space')||keys.has('ArrowUp')||keys.has('KeyW')) && p.onGround){ p.vy = JUMP_V; p.onGround = false; playSfx('sfxJump'); }
+  p.vy += GRAVITY * dt;
+  if(p.vy > 14) p.vy = 14;
+
+  const solids = getActivePlatforms(bridgeStates, t);
+  const box = ()=>({x:p.x-PW/2, y:p.y-PH, w:PW, h:PH});
+
+  p.x += p.vx * dt;
+  let b = box();
+  for(const s of solids){
+    if(rectsOverlap(b,s)){
+      if(p.vx > 0) p.x = s.x - PW/2; else if(p.vx < 0) p.x = s.x + s.w + PW/2;
+      b = box();
+    }
+  }
+  p.y += p.vy * dt;
+  b = box();
+  const wasOnGround = p.onGround;
+  p.onGround = false;
+  lastLandedMpIndex = null;
+  for(const s of solids){
+    if(rectsOverlap(b,s)){
+      if(p.vy > 0){
+        if(!wasOnGround && p.vy > 3){ landingSquash = Math.min(1, p.vy / 14); spawnLandingBurst(p.x, s.y, '#4ade80', landingSquash); }
+        p.y = s.y; p.onGround = true; p.vy = 0; if(s.__mpIndex !== undefined) lastLandedMpIndex = s.__mpIndex;
+      }
+      else if(p.vy < 0){ p.y = s.y + s.h + PH; p.vy = 0; }
+      b = box();
+    }
+  }
+
+  b = box();
+  for(const hz of lvl.hazards){
+    if(hazardActive(hz, t) && rectsOverlap(b, hz.rect)){
+      p.x = sp.x; p.y = sp.y; p.vx = 0; p.vy = 0;
+      break;
+    }
+  }
+
+  if(p.y > killY()){ p.x = sp.x; p.y = sp.y; p.vx = 0; p.vy = 0; }
+  if(p.y < PH) p.y = PH;
+  if(p.x < PW/2) p.x = PW/2;
+  if(p.x > lvl.width - PW/2) p.x = lvl.width - PW/2;
+}
+
+function isOnPad(pos, rect){
+  return pos.x > rect.x && pos.x < rect.x+rect.w && pos.y >= rect.y-5 && pos.y <= rect.y+5;
+}
+
+const PIXEL_SIZES = [3, 4, 5, 6]; // discrete sizes so trail reads as blocky pixels, not smooth dots
+function spawnTrailParticle(x, y, colorHex){
+  if(particles.length > 220) particles.splice(0, particles.length - 220);
+  const grid = 2; // snap to a small grid for a chunkier, less "smooth" look
+  particles.push({
+    x: Math.round((x + (Math.random()-0.5)*8) / grid) * grid,
+    y: Math.round((y - 2 + (Math.random()-0.5)*5) / grid) * grid,
+    vx: (Math.random()-0.5)*0.5,
+    vy: -0.12 - Math.random()*0.18,
+    life: 1,
+    decay: 0.022 + Math.random()*0.018,
+    size: PIXEL_SIZES[Math.floor(Math.random()*PIXEL_SIZES.length)],
+    color: colorHex
+  });
+}
+function spawnLandingBurst(x, y, colorHex, intensity){
+  intensity = Math.max(0.15, Math.min(1, intensity));
+  const count = 5 + Math.round(intensity * 5);
+  for(let i = 0; i < count; i++){
+    const dir = i % 2 === 0 ? 1 : -1;
+    const spread = 0.3 + Math.random()*0.5;
+    particles.push({
+      x: x + dir * (2 + Math.random()*2),
+      y: y - 1,
+      vx: dir * spread * (0.5 + intensity * 0.6),
+      vy: -0.15 - Math.random() * 0.25 * intensity,
+      life: 1,
+      decay: 0.06 + Math.random()*0.03,
+      size: PIXEL_SIZES[Math.floor(Math.random()*PIXEL_SIZES.length)],
+      color: colorHex
+    });
+  }
+  if(particles.length > 220) particles.splice(0, particles.length - 220);
+}
+function updateAndDrawParticles(dt){
+  const wasSmoothing = ctx.imageSmoothingEnabled;
+  ctx.imageSmoothingEnabled = false; // keep the squares crisp/blocky, no anti-aliasing blur
+  for(let i = particles.length - 1; i >= 0; i--){
+    const p = particles[i];
+    p.x += p.vx * dt;
+    p.y += p.vy * dt;
+    p.life -= p.decay * dt;
+    if(p.life <= 0){ particles.splice(i, 1); continue; }
+    // shrink in whole-pixel steps instead of smoothly, so it still reads as "pixels" while fading
+    const steppedLife = Math.ceil(p.life * 4) / 4;
+    const s = Math.max(1, Math.round(p.size * steppedLife));
+    ctx.globalAlpha = Math.max(0, p.life) * 0.7;
+    ctx.fillStyle = p.color;
+    ctx.fillRect(Math.round(p.x - s/2), Math.round(p.y - s/2), s, s);
+  }
+  ctx.globalAlpha = 1;
+  ctx.imageSmoothingEnabled = wasSmoothing;
+}
+
+function drawPlayer(x,y,color,label,squash){
+  squash = squash || 0;
+  const w = PW * (1 + squash * 0.35);
+  const h = PH * (1 - squash * 0.28);
+  ctx.fillStyle = color; ctx.shadowColor = color; ctx.shadowBlur = 8;
+  ctx.fillRect(x-w/2, y-h, w, h);
+  ctx.shadowBlur = 0;
+  ctx.fillStyle = '#050810';
+  ctx.fillRect(x-6, y-h+8, 4,4); ctx.fillRect(x+2, y-h+8, 4,4);
+  ctx.fillStyle = '#c7d1d9'; ctx.font = '10px monospace'; ctx.textAlign = 'center';
+  ctx.fillText(label, x, y-PH-6); ctx.textAlign = 'left';
+}
+
+function drawLevel(remotePositions, bridgeStates, t, dt){
+  const lvl = L();
+  const h = lvl.height || 400;
+  ctx.clearRect(0,0,lvl.width,h);
+  ctx.strokeStyle = 'rgba(74,222,128,0.05)';
+  for(let x=0;x<lvl.width;x+=40){ ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,h); ctx.stroke(); }
+
+  ctx.fillStyle = '#141b24'; ctx.strokeStyle = '#2f6b47'; ctx.lineWidth = 1.5;
+  lvl.grounds.forEach(r=>{ ctx.fillRect(r.x,r.y,r.w,r.h); ctx.strokeRect(r.x,r.y,r.w,r.h); });
+
+  lvl.bridges.forEach(bridge=>{
+    const active = bridgeStates[bridge.id];
+    if(active){
+      ctx.fillStyle = 'rgba(74,222,128,0.18)'; ctx.strokeStyle = '#4ade80';
+      ctx.fillRect(bridge.rect.x,bridge.rect.y,bridge.rect.w,bridge.rect.h);
+      ctx.strokeRect(bridge.rect.x,bridge.rect.y,bridge.rect.w,bridge.rect.h);
+    } else {
+      ctx.strokeStyle = 'rgba(245,165,36,0.4)'; ctx.setLineDash([4,4]);
+      ctx.strokeRect(bridge.rect.x,bridge.rect.y,bridge.rect.w,bridge.rect.h); ctx.setLineDash([]);
+    }
+    bridge.switchPads.forEach(pad=>{
+      ctx.fillStyle = active ? '#4ade80' : '#f5a524';
+      ctx.fillRect(pad.x,pad.y,pad.w,pad.h);
+      ctx.fillStyle = '#c7d1d9'; ctx.font = '9px monospace';
+      ctx.fillText(bridge.mode === 'hold' ? 'HOLD' : 'SWITCH', pad.x, pad.y-4);
+    });
+  });
+
+  lvl.movingPlatforms.forEach(mp=>{
+    const r = getMovingPlatformRect(mp, t);
+    ctx.fillStyle = 'rgba(125,211,252,0.2)'; ctx.strokeStyle = '#7dd3fc';
+    ctx.fillRect(r.x,r.y,r.w,r.h); ctx.strokeRect(r.x,r.y,r.w,r.h);
+  });
+
+  lvl.crumbles.forEach(c=>{
+    const solidNow = crumbleIsSolid(c, t);
+    const warning = crumbleIsWarning(c, t);
+    if(solidNow){
+      ctx.fillStyle = warning ? 'rgba(227,72,72,0.5)' : 'rgba(245,165,36,0.3)';
+      ctx.strokeStyle = warning ? '#e34848' : '#f5a524';
+      ctx.fillRect(c.rect.x,c.rect.y,c.rect.w,c.rect.h);
+      ctx.strokeRect(c.rect.x,c.rect.y,c.rect.w,c.rect.h);
+    } else {
+      ctx.strokeStyle = 'rgba(138,152,168,0.35)'; ctx.setLineDash([3,3]);
+      ctx.strokeRect(c.rect.x,c.rect.y,c.rect.w,c.rect.h); ctx.setLineDash([]);
+    }
+  });
+
+  lvl.hazards.forEach(hz=>{
+    const active = hazardActive(hz, t);
+    ctx.fillStyle = active ? 'rgba(227,72,72,0.5)' : 'rgba(227,72,72,0.1)';
+    ctx.strokeStyle = active ? '#e34848' : 'rgba(227,72,72,0.35)';
+    ctx.fillRect(hz.rect.x,hz.rect.y,hz.rect.w,hz.rect.h);
+    ctx.strokeRect(hz.rect.x,hz.rect.y,hz.rect.w,hz.rect.h);
+  });
+
+  lvl.launchPads.forEach(lp=>{
+    ctx.fillStyle = '#a78bfa';
+    ctx.fillRect(lp.padA.x,lp.padA.y,lp.padA.w,lp.padA.h);
+    ctx.fillRect(lp.padB.x,lp.padB.y,lp.padB.w,lp.padB.h);
+    ctx.fillStyle = '#c7d1d9'; ctx.font = '9px monospace';
+    ctx.fillText('LAUNCH', lp.padA.x, lp.padA.y-4);
+    ctx.fillText('LAUNCH', lp.padB.x, lp.padB.y-4);
+  });
+
+  lvl.gates.forEach(g=>{
+    const open = roomRowState.gatesOpen && roomRowState.gatesOpen[g.id];
+    ctx.fillStyle = open ? '#4ade80' : '#f5a524';
+    ctx.fillRect(g.plateA.x,g.plateA.y,g.plateA.w,g.plateA.h);
+    ctx.fillRect(g.plateB.x,g.plateB.y,g.plateB.w,g.plateB.h);
+    ctx.fillStyle = '#c7d1d9'; ctx.font='9px monospace';
+    ctx.fillText('A', g.plateA.x+g.plateA.w/2-3, g.plateA.y-4);
+    ctx.fillText('B', g.plateB.x+g.plateB.w/2-3, g.plateB.y-4);
+
+    const wallH = (lvl.height||400) - 60;
+    ctx.fillStyle = open ? 'rgba(74,222,128,0.12)' : 'rgba(227,72,72,0.22)';
+    ctx.fillRect(g.gateX, 0, 12, wallH);
+    ctx.strokeStyle = open ? '#4ade80' : '#e34848';
+    ctx.strokeRect(g.gateX, 0, 12, wallH);
+  });
+
+  if(Math.random() < 0.75) spawnTrailParticle(myPlayer.x, myPlayer.y, '#4ade80');
+  Object.values(remotePositions).forEach(pos=>{
+    if(Math.random() < 0.75) spawnTrailParticle(pos.x, pos.y, '#f5a524');
+  });
+  updateAndDrawParticles(dt || 1);
+
+  Object.entries(remotePositions).forEach(([name,pos])=>drawPlayer(pos.x, pos.y, '#f5a524', name));
+  drawPlayer(myPlayer.x, myPlayer.y, '#4ade80', myName, landingSquash);
+  landingSquash *= Math.pow(0.8, dt || 1); // decay the squash back to normal over a few frames
+  if(landingSquash < 0.02) landingSquash = 0;
+}
+
+const RENDER_DELAY = 55;
+const MAX_EXTRAPOLATE = 150;
+
+function getInterpolatedRemotePositions(){
+  const renderTime = Date.now() - RENDER_DELAY;
+  const out = {};
+  Object.entries(lastRemoteSnapshots).forEach(([name, buf])=>{
+    if(buf.length === 0) return;
+    if(buf.length === 1){ out[name] = {x:buf[0].x, y:buf[0].y}; return; }
+
+    if(renderTime <= buf[0].t){ out[name] = {x:buf[0].x, y:buf[0].y}; return; }
+
+    const last = buf[buf.length-1];
+    if(renderTime >= last.t){
+      const prev = buf[buf.length-2];
+      const dt = (last.t - prev.t) || 1;
+      const vx = (last.x - prev.x) / dt;
+      const vy = (last.y - prev.y) / dt;
+      const overshoot = Math.min(renderTime - last.t, MAX_EXTRAPOLATE);
+      out[name] = { x: last.x + vx*overshoot, y: last.y + vy*overshoot };
+      return;
+    }
+
+    let a = buf[0], b = buf[buf.length-1];
+    for(let i=0;i<buf.length-1;i++){
+      if(buf[i].t <= renderTime && buf[i+1].t >= renderTime){ a = buf[i]; b = buf[i+1]; break; }
+    }
+    const span = (b.t - a.t) || 1;
+    const t = Math.max(0, Math.min(1, (renderTime - a.t) / span));
+    out[name] = { x: a.x + (b.x-a.x)*t, y: a.y + (b.y-a.y)*t };
+  });
+  return out;
+}
+
+let lastFrameTime = null;
+let lastKnownRemainingMs = OXYGEN_TOTAL_MS;
+
+function updateOxygenBar(remainingMs){
+  const inner = document.getElementById('oxyBarInner');
+  const text = document.getElementById('oxyTimeText');
+  if(!inner || !text) return;
+  const frac = Math.max(0, Math.min(1, remainingMs / OXYGEN_TOTAL_MS));
+  inner.style.width = (frac*100).toFixed(1) + '%';
+  let color = 'var(--green)';
+  if(frac <= 0.2) color = 'var(--red)';
+  else if(frac <= 0.45) color = 'var(--amber)';
+  inner.style.background = color;
+  inner.classList.toggle('critical', frac <= 0.2);
+  const totalSec = Math.max(0, Math.ceil(remainingMs/1000));
+  const mm = Math.floor(totalSec/60).toString().padStart(2,'0');
+  const ss = (totalSec%60).toString().padStart(2,'0');
+  text.textContent = `${mm}:${ss}`;
+  text.style.color = color;
+}
+
+function gameLoop(){
+  if(gamePhase !== 'playing') return;
+  const lvl = L();
+  const t = Date.now();
+  let dt = lastFrameTime ? (t - lastFrameTime) / 16.6667 : 1;
+  dt = Math.max(0.2, Math.min(2.5, dt));
+  lastFrameTime = t;
+  const preview = getInterpolatedRemotePositions();
+
+  if(roomRowState.startTime){
+    const remainingMs = OXYGEN_TOTAL_MS - (t - roomRowState.startTime);
+    lastKnownRemainingMs = remainingMs;
+    updateOxygenBar(remainingMs);
+    if(remainingMs <= 0 && !oxygenTriggerSent && !roomRowState.dead && !roomRowState.won){
+      oxygenTriggerSent = true;
+      db.ref(`rooms605/${roomCode}/state`).transaction(current=>{
+        if(!current) return current;
+        if(current.dead || current.won) return current;
+        current.dead = true;
+        current.deathReason = 'oxygen';
+        return current;
+      });
+    }
+  }
+
+  const bridgeStates = {};
+  lvl.bridges.forEach(b=>{ bridgeStates[b.id] = isBridgeActive(b, myPlayer, preview); });
+
+  if(riddenMpIndex !== null && lvl.movingPlatforms[riddenMpIndex]){
+    const mp = lvl.movingPlatforms[riddenMpIndex];
+    const isVertical = mp.x0 === mp.x1;
+    if(isVertical){
+      const newRect = getMovingPlatformRect(mp, t);
+      if(riddenMpPrevRect){
+        myPlayer.x += newRect.x - riddenMpPrevRect.x;
+        myPlayer.y += newRect.y - riddenMpPrevRect.y;
+      }
+      riddenMpPrevRect = newRect;
+      myPlayer.onGround = true;
+    } else {
+      riddenMpPrevRect = null;
+    }
+  } else {
+    riddenMpPrevRect = null;
+  }
+
+  stepPhysics(bridgeStates, t, dt);
+  riddenMpIndex = lastLandedMpIndex;
+
+  lvl.bridges.forEach(b=>{
+    if(b.mode === 'toggle' && b.switchPads.some(pad=>isOnPad(myPlayer,pad)) && !(roomRowState.bridgesOn && roomRowState.bridgesOn[b.id])){
+      db.ref(`rooms605/${roomCode}/state/bridgesOn/${b.id}`).set(true);
+      roomRowState.bridgesOn = roomRowState.bridgesOn || {};
+      roomRowState.bridgesOn[b.id] = true;
+    }
+  });
+
+  const remote = getInterpolatedRemotePositions();
+
+  lvl.crumbles.forEach(c=>{
+    if(!isOnPad(myPlayer, c.rect)) return;
+    if(!crumbleIsSolid(c, t)) return;
+    const elapsed = crumbleElapsed(c, t);
+    const freshOrRespawned = elapsed === null || elapsed >= (c.warnMs + c.fallMs);
+    if(freshOrRespawned){
+      db.ref(`rooms605/${roomCode}/state/crumbleStart/${c.id}`).set(t);
+      roomRowState.crumbleStart = roomRowState.crumbleStart || {};
+      roomRowState.crumbleStart[c.id] = t;
+    }
+  });
+
+  const LAUNCH_GRACE_MS = 400;
+  lvl.launchPads.forEach(lp=>{
+    const iOnA = isOnPad(myPlayer, lp.padA), iOnB = isOnPad(myPlayer, lp.padB);
+    const iOnEither = iOnA || iOnB;
+    if(iOnA) localPadTouch[lp.id+':A'] = t;
+    if(iOnB) localPadTouch[lp.id+':B'] = t;
+    const myRecentA = localPadTouch[lp.id+':A'] && (t - localPadTouch[lp.id+':A']) <= LAUNCH_GRACE_MS;
+    const myRecentB = localPadTouch[lp.id+':B'] && (t - localPadTouch[lp.id+':B']) <= LAUNCH_GRACE_MS;
+
+    let otherRecentA=false, otherRecentB=false;
+    Object.entries(lastRemoteSnapshots).forEach(([name, buf])=>{
+      buf.forEach(s=>{
+        if((t - s.t) > LAUNCH_GRACE_MS) return;
+        if(isOnPad(s, lp.padA)) otherRecentA = true;
+        if(isOnPad(s, lp.padB)) otherRecentB = true;
+      });
+    });
+
+    const bothCovered = (myRecentA && otherRecentB) || (myRecentB && otherRecentA);
+    if(!iOnEither){ launchArmed[lp.id] = true; }
+
+    if(pendingLaunchFire[lp.id]){
+      delete pendingLaunchFire[lp.id];
+      if(iOnEither){
+        myPlayer.vy = lp.boost;
+        myPlayer.onGround = false;
+      }
+    }
+
+    if(bothCovered && iOnEither && launchArmed[lp.id] !== false){
+      launchArmed[lp.id] = false;
+      db.ref(`rooms605/${roomCode}/state/launchFire/${lp.id}`).set(t);
+    }
+  });
+
+  lvl.gates.forEach(g=>{
+    const already = roomRowState.gatesOpen && roomRowState.gatesOpen[g.id];
+    if(already) return;
+    const iOnA = isOnPad(myPlayer, g.plateA), iOnB = isOnPad(myPlayer, g.plateB);
+    let otherOnA=false, otherOnB=false;
+    Object.values(remote).forEach(pos=>{
+      if(isOnPad(pos, g.plateA)) otherOnA = true;
+      if(isOnPad(pos, g.plateB)) otherOnB = true;
+    });
+    const bothCovered = (iOnA && otherOnB) || (iOnB && otherOnA);
+    if(bothCovered){
+      db.ref(`rooms605/${roomCode}/state/gatesOpen/${g.id}`).set(true);
+      roomRowState.gatesOpen = roomRowState.gatesOpen || {};
+      roomRowState.gatesOpen[g.id] = true;
+    }
+  });
+
+  const finalGate = lvl.gates[lvl.gates.length-1];
+  const finalOpen = !!(roomRowState.gatesOpen && roomRowState.gatesOpen[finalGate.id]);
+  const otherNames = Array.from(onlineNames).filter(n => n !== myName);
+  const iAmPastGate = myPlayer.x > finalGate.gateX - 4;
+  const othersPastGate = otherNames.length === 0 || otherNames.every(name=>{
+    const pos = remote[name];
+    return pos && pos.x > finalGate.gateX - 4;
+  });
+  const cleared = finalOpen && iAmPastGate && othersPastGate;
+  const isLastLevel = currentLevel >= LEVELS.length - 1;
+  const banner = document.getElementById('clearBanner');
+
+  if(cleared && !advancing){
+    advancing = true;
+    if(banner){
+      banner.innerHTML = isLastLevel
+        ? `<div class="clear-banner">ALL CLEAR!<br><span style="font-size:12px;color:#8a98a8;">탈출 포드로 진입 중...</span></div>`
+        : `<div class="clear-banner">STAGE CLEAR!<br><span style="font-size:12px;color:#8a98a8;">다음 구역으로 이동 중...</span></div>`;
+    }
+    if(isLastLevel){
+      const remainingAtWin = Math.max(0, lastKnownRemainingMs);
+      db.ref(`rooms605/${roomCode}/state`).transaction(current=>{
+        if(!current) return current;
+        if(current.dead || current.won) return current;
+        current.won = true;
+        current.remainingAtWinMs = remainingAtWin;
+        return current;
+      });
+    } else {
+      const sourceLevel = currentLevel;
+      setTimeout(()=>{
+        db.ref(`rooms605/${roomCode}/state`).transaction(current=>{
+          if(!current) return defaultRoomState();
+          if((current.level||0) !== sourceLevel) return current;
+          current.level = sourceLevel+1;
+          current.bridgesOn = {};
+          current.gatesOpen = {};
+          current.crumbleStart = {};
+          return current;
+        });
+      }, 1400);
+    }
+  } else if(!cleared && !advancing && banner){
+    banner.innerHTML = '';
+  }
+
+  drawLevel(remote, bridgeStates, t, dt);
+  rafId = requestAnimationFrame(gameLoop);
+}
+
+function setupMobileControls(){
+  const bind = (id, code)=>{
+    const el = document.getElementById(id);
+    if(!el) return;
+    const press = (e)=>{ e.preventDefault(); keys.add(code); };
+    const release = (e)=>{ e.preventDefault(); keys.delete(code); };
+    el.addEventListener('pointerdown', press);
+    el.addEventListener('pointerup', release);
+    el.addEventListener('pointercancel', release);
+    el.addEventListener('pointerleave', release);
+  };
+  bind('mcLeft', 'ArrowLeft');
+  bind('mcRight', 'ArrowRight');
+  bind('mcJump', 'Space');
+}
+
+function removeOverlay(){
+  const overlay = document.getElementById('sfOverlay');
+  if(overlay) overlay.remove();
+}
+
+async function shareResult(won){
+  let text;
+  if(won){
+    const ms = roomRowState.remainingAtWinMs;
+    if(typeof ms === 'number'){
+      const totalSec = Math.max(0, Math.floor(ms/1000));
+      const mm = Math.floor(totalSec/60);
+      const ss = totalSec % 60;
+      text = `${mm}분 ${ss}초 남기고 탈출 성공! 다음에도 탈출해보고 싶어!`;
+    } else {
+      text = `탈출 성공! 다음에도 탈출해보고 싶어!`;
+    }
+  } else {
+    text = `탈출 실패... 이번엔 성공할 수 있을까?`;
+  }
+  const shareData = { title: '정거장 605', text, url: location.href };
+  if(navigator.share){
+    try{ await navigator.share(shareData); }catch(e){ /* 사용자가 취소한 경우도 여기로 옴 — 무시 */ }
+  } else {
+    const fullText = `${text}\n${location.href}`;
+    try{
+      await navigator.clipboard.writeText(fullText);
+      alert('결과가 클립보드에 복사됐어요. 원하는 곳에 붙여넣기 해보세요!');
+    }catch(e){
+      prompt('아래 내용을 복사해서 공유하세요:', fullText);
+    }
+  }
+}
+
+function renderDeathOverlay(){
+  let overlay = document.getElementById('sfOverlay');
+  if(!overlay){ overlay = document.createElement('div'); overlay.id = 'sfOverlay'; document.body.appendChild(overlay); }
+  overlay.className = 'sf-overlay';
+  overlay.innerHTML = `
+    <div class="sf-panel danger fade-in">
+      <div class="sf-panel-title danger">// 생명유지 시스템 정지 //</div>
+      <div class="sf-body">
+        예비 산소가 완전히 고갈되었습니다.<br>
+        정거장 605 승무원의 생체 신호가 더 이상 감지되지 않습니다.<br>
+        <span class="muted">[End 1] 임무 실패 — 사망</span>
+      </div>
+      <button id="shareBtnDead" style="width:100%;border-color:var(--slate);color:var(--white);">결과 공유하기</button>
+      <button id="retryBtn" style="width:100%;margin-top:8px;">다시 도전하기</button>
+      <button id="leaveBtnDead" style="width:100%;margin-top:8px;border-color:var(--slate);color:var(--slate);">나가기 (코드 반납)</button>
+    </div>
+  `;
+  document.getElementById('shareBtnDead').onclick = ()=> shareResult(false);
+  document.getElementById('retryBtn').onclick = async ()=>{
+    await db.ref(`rooms605/${roomCode}/state`).set(defaultRoomState());
+  };
+  document.getElementById('leaveBtnDead').onclick = ()=> leaveRoom();
+}
+
+function renderWinOverlay(){
+  let overlay = document.getElementById('sfOverlay');
+  if(!overlay){ overlay = document.createElement('div'); overlay.id = 'sfOverlay'; document.body.appendChild(overlay); }
+  overlay.className = 'sf-overlay';
+  overlay.innerHTML = `
+    <div class="sf-panel fade-in">
+      <div class="sf-panel-title ok">// 탈출 성공 //</div>
+      <div class="sf-body">
+        탈출 포드가 정거장 605에서 무사히 분리되었습니다.<br>
+        15개 격리 구역을 모두 통과해 승무원 전원이 두 번째 탈출에도 성공했습니다.<br>
+        <span class="glow">[End 2] 임무 성공 - 완전한 귀환</span>
+      </div>
+      <button id="shareBtnWon" style="width:100%;border-color:var(--green-dim);">결과 공유하기</button>
+      <button id="retryBtn" style="width:100%;margin-top:8px;">새 임무 시작</button>
+      <button id="leaveBtnWon" style="width:100%;margin-top:8px;border-color:var(--slate);color:var(--slate);">나가기 (코드 반납)</button>
+    </div>
+  `;
+  document.getElementById('shareBtnWon').onclick = ()=> shareResult(true);
+  document.getElementById('retryBtn').onclick = async ()=>{
+    await db.ref(`rooms605/${roomCode}/state`).set(defaultRoomState());
+  };
+  document.getElementById('leaveBtnWon').onclick = ()=> leaveRoom();
+}
+
+function applyLevelReset(lvl){
+  currentLevel = Math.max(0, Math.min(LEVELS.length-1, lvl));
+  advancing = false;
+  launchArmed = {};
+  localPadTouch = {};
+  landingSquash = 0;
+  riddenMpIndex = null;
+  riddenMpPrevRect = null;
+  lastFrameTime = null;
+  pendingLaunchFire = {};
+  lastSeenLaunchTs = {};
+  particles = [];
+  const sp = startPos();
+  myPlayer.x = sp.x; myPlayer.y = sp.y; myPlayer.vx = 0; myPlayer.vy = 0;
+  updateStageIndicator();
+  if(canvas){ canvas.width = L().width; canvas.height = L().height; }
+  const banner = document.getElementById('clearBanner');
+  if(banner) banner.innerHTML = '';
+}
+
+// If I'm the only one left in the room, arrange for the WHOLE room to be wiped
+// the moment I disconnect (even by just closing the tab, not clicking "나가기").
+// If someone else is around, only my own presence entry should disappear when I go.
+// Re-evaluated every time the player list changes, on every connected client.
+function updatePresenceCleanupStrategy(){
+  if(!db || !roomCode || !myPlayerRef) return;
+  if(onlineNames.size <= 1){
+    db.ref(`rooms605/${roomCode}`).onDisconnect().remove();
+  } else {
+    db.ref(`rooms605/${roomCode}`).onDisconnect().cancel();
+    myPlayerRef.onDisconnect().remove();
+  }
+}
+
+function setupRealtime(){
+  myPlayerRef = db.ref(`rooms605/${roomCode}/players/${myName}`);
+  myPlayerRef.onDisconnect().remove();
+
+  realtimeRefs.players = db.ref(`rooms605/${roomCode}/players`);
+  realtimeRefs.players.on('value', (snap)=>{
+    const val = snap.val() || {};
+    onlineNames = new Set(Object.keys(val));
+    updatePlayerChips();
+    if(gamePhase === 'briefing') renderReadyList();
+    Object.entries(val).forEach(([name, pos])=>{
+      if(name === myName) return;
+      const t = Date.now();
+      if(!lastRemoteSnapshots[name]) lastRemoteSnapshots[name] = [];
+      const arr = lastRemoteSnapshots[name];
+      arr.push({x:pos.x, y:pos.y, t});
+      if(arr.length > 8) arr.shift();
+    });
+    if(gamePhase === 'briefing') maybeLaunchGame();
+    updatePresenceCleanupStrategy();
+  });
+
+  realtimeRefs.state = db.ref(`rooms605/${roomCode}/state`);
+  realtimeRefs.state.on('value', (snap)=>{
+    const val = snap.val();
+    if(!val) return;
+    const prevGatesOpen = roomRowState.gatesOpen || {};
+    const nextGatesOpen = val.gatesOpen || {};
+    if(gamePhase === 'playing'){
+      Object.keys(nextGatesOpen).forEach(gid=>{
+        if(nextGatesOpen[gid] && !prevGatesOpen[gid]) playSfx('sfxOpen');
+      });
+    }
+    roomRowState.bridgesOn = val.bridgesOn || {};
+    roomRowState.gatesOpen = nextGatesOpen;
+    roomRowState.crumbleStart = val.crumbleStart || {};
+    roomRowState.ready = val.ready || {};
+    roomRowState.gameStarted = !!val.gameStarted;
+    roomRowState.startTime = val.startTime || null;
+    roomRowState.dead = !!val.dead;
+    roomRowState.deathReason = val.deathReason || null;
+    roomRowState.won = !!val.won;
+    roomRowState.remainingAtWinMs = typeof val.remainingAtWinMs === 'number' ? val.remainingAtWinMs : null;
+
+    let newPhase = 'briefing';
+    if(roomRowState.dead) newPhase = 'dead';
+    else if(roomRowState.won) newPhase = 'won';
+    else if(roomRowState.gameStarted) newPhase = 'playing';
+
+    if(newPhase !== gamePhase){
+      const prevPhase = gamePhase;
+      gamePhase = newPhase;
+      if(prevPhase === 'playing' && rafId){ cancelAnimationFrame(rafId); rafId = null; }
+
+      if(newPhase === 'briefing'){
+        oxygenTriggerSent = false;
+        removeOverlay();
+        stopBgm();
+        renderBriefing();
+      } else if(newPhase === 'playing'){
+        removeOverlay();
+        oxygenTriggerSent = false;
+        const lvl = typeof val.level === 'number' ? val.level : 0;
+        renderShell();
+        applyLevelReset(lvl);
+        updatePlayerChips();
+        playBgm();
+        gameLoop();
+      } else if(newPhase === 'dead'){
+        stopBgm();
+        renderDeathOverlay();
+      } else if(newPhase === 'won'){
+        stopBgm();
+        renderWinOverlay();
+      }
+      return;
+    }
+
+    if(gamePhase === 'briefing'){
+      renderReadyList();
+      maybeLaunchGame();
+    } else if(gamePhase === 'playing'){
+      const lvl = typeof val.level === 'number' ? val.level : 0;
+      if(lvl !== currentLevel) applyLevelReset(lvl);
+    }
+  });
+
+  realtimeRefs.launchFire = db.ref(`rooms605/${roomCode}/state/launchFire`);
+  realtimeRefs.launchFire.on('value', (snap)=>{
+    const val = snap.val() || {};
+    Object.entries(val).forEach(([padId, ts])=>{
+      if(lastSeenLaunchTs[padId] === ts) return;
+      lastSeenLaunchTs[padId] = ts;
+      pendingLaunchFire[padId] = true;
+    });
+  });
+
+  realtimeRefs.connected = db.ref('.info/connected');
+  realtimeRefs.connected.on('value', (snap)=>{
+    const pill = document.getElementById('statusPill');
+    if(!pill) return;
+    if(snap.val() === true){ pill.textContent = '연결됨'; pill.className = 'status-pill connected'; }
+    else { pill.textContent = '연결 중...'; pill.className = 'status-pill pending'; }
+  });
+
+  posSendTimer = setInterval(()=>{
+    myPlayerRef.set({ x: Math.round(myPlayer.x), y: Math.round(myPlayer.y), ts: Date.now() });
+  }, 40);
+}
+
+function teardownRealtime(){
+  Object.values(realtimeRefs).forEach(ref=>{ try{ ref.off(); }catch(e){} });
+  realtimeRefs = {};
+  if(posSendTimer){ clearInterval(posSendTimer); posSendTimer = null; }
+  if(rafId){ cancelAnimationFrame(rafId); rafId = null; }
+}
+
+async function leaveRoom(){
+  if(!db || !roomCode){ renderLogin(); return; }
+  stopBgm();
+  const leavingCode = roomCode;
+  try{
+    await db.ref(`rooms605/${leavingCode}`).onDisconnect().cancel();
+    if(myPlayerRef){ await myPlayerRef.onDisconnect().cancel(); await myPlayerRef.remove(); }
+  }catch(e){ console.error(e); }
+  try{
+    const snap = await db.ref(`rooms605/${leavingCode}/players`).once('value');
+    const remaining = snap.val() || {};
+    if(Object.keys(remaining).length === 0){
+      await db.ref(`rooms605/${leavingCode}`).remove();
+    }
+  }catch(e){ console.error(e); }
+
+  teardownRealtime();
+  gamePhase = 'briefing';
+  oxygenTriggerSent = false;
+  onlineNames = new Set();
+  lastRemoteSnapshots = {};
+  roomRowState = defaultRoomState();
+  myName = ""; roomCode = "";
+  myPlayerRef = null;
+  removeOverlay();
+  renderLogin();
+}
+
+function setupKeys(){
+  window.addEventListener('keydown', e=>{
+    if(e.code === 'KeyR' && gamePhase === 'briefing'){ toggleMyReady(); return; }
+    if(['ArrowLeft','ArrowRight','ArrowUp','Space','KeyA','KeyD','KeyW'].includes(e.code)) e.preventDefault();
+    keys.add(e.code);
+  });
+  window.addEventListener('keyup', e=>{ keys.delete(e.code); });
+}
+
+function initGame(){
+  gamePhase = 'briefing';
+  renderBriefing();
+  setupKeys();
+  setupRealtime();
+}
+
+const bgmEl = document.getElementById('bgm');
+if(bgmEl){
+  bgmEl.addEventListener('error', ()=>{
+    console.warn('[BGM] BGM.mp3를 불러오지 못했습니다. 파일이 이 html과 같은 폴더에 있는지, 파일명 대소문자가 정확한지 확인해보세요.');
+  });
+  // cache-bust so a replaced BGM.mp3 is always fetched fresh instead of
+  // reusing a stale (previously-broken) cached copy from the browser/CDN
+  bgmEl.src = 'BGM.mp3?v=' + Date.now();
+  bgmEl.load();
+}
+
+[['sfxJump','jump.mp3'], ['sfxOpen','open.mp3']].forEach(([id, file])=>{
+  const el = document.getElementById(id);
+  if(!el) return;
+  el.addEventListener('error', ()=>{
+    console.warn(`[SFX] ${file}를 불러오지 못했습니다. html과 같은 폴더에 있는지 확인해보세요.`);
+  });
+  el.src = file + '?v=' + Date.now();
+  el.load();
+});
+
+renderLogin();
+
+if('serviceWorker' in navigator){
+  window.addEventListener('load', ()=>{
+    navigator.serviceWorker.register('sw.js').catch(()=>{});
+  });
+}
+</script>
+</body>
+</html>
