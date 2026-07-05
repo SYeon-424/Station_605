@@ -21,6 +21,7 @@
   :root{
     --bg:#080b10; --panel:#0e131b; --line:#1c2530;
     --green:#4aa8ff; --green-dim:#2f6a99; --amber:#facc15; --red:#e34848; --slate:#8a98a8; --white:#eef2f5;
+    --openclr:#4ade80; --openclr-dim:#2f6b47;
   }
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;background:var(--bg);color:var(--white);font-family:'IBM Plex Mono',monospace;min-height:100%;}
@@ -204,14 +205,14 @@ let lastRemoteSnapshots = {};
 let onlineNames = new Set();
 let realtimeRefs = {};
 let myPlayerRef = null;
-let roomRowState = { level:0, bridgesOn:{}, gatesOpen:{}, crumbleStart:{}, ready:{}, gameStarted:false, startTime:null, dead:false, deathReason:null, won:false };
+let roomRowState = { level:0, bridgesOn:{}, gatesOpen:{}, crumbleStart:{}, ready:{}, batteryHeld:{}, batteryCharged:{}, gameStarted:false, startTime:null, dead:false, deathReason:null, won:false };
 
 let gamePhase = 'briefing';
 let oxygenTriggerSent = false;
 const OXYGEN_TOTAL_MS = 10 * 60 * 1000;
 
 function defaultRoomState(){
-  return { level:0, bridgesOn:{}, gatesOpen:{}, crumbleStart:{}, ready:{}, gameStarted:false, startTime:null, dead:false, deathReason:null, won:false };
+  return { level:0, bridgesOn:{}, gatesOpen:{}, crumbleStart:{}, ready:{}, batteryHeld:{}, batteryCharged:{}, gameStarted:false, startTime:null, dead:false, deathReason:null, won:false };
 }
 
 const GRAVITY = 0.65, JUMP_V = -11.5, MOVE_SPEED = 3.4;
@@ -221,20 +222,77 @@ const START_POS = {x:40,y:290};
 function startPos(){ return L().start || START_POS; }
 function killY(){ return (L().height || 400) + 40; }
 
+// 문(게이트) 색상 규칙 — 모든 스테이지 공통
+//  - 배터리가 필요 없는 문: 평소 amber, 열리면 green
+//  - 배터리가 필요한 문: 방전(회색) → 배터리 장착(빨강) → 두 명 압력판 → 개방(초록)
+const GATE_COLORS = {
+  open:      '#4ade80',
+  charged:   '#e34848',
+  uncharged: '#8a98a8',
+  locked:    '#facc15'
+};
+const GATE_WALL_FILL = {
+  open:      'rgba(74,222,128,0.12)',
+  charged:   'rgba(227,72,72,0.22)',
+  uncharged: 'rgba(138,152,168,0.20)',
+  locked:    'rgba(227,72,72,0.22)'
+};
+function gateColorState(g){
+  if(roomRowState.gatesOpen && roomRowState.gatesOpen[g.id]) return 'open';
+  if(g.batteryId){
+    return (roomRowState.batteryCharged && roomRowState.batteryCharged[g.id]) ? 'charged' : 'uncharged';
+  }
+  return 'locked';
+}
+
 const LEVELS = [
-  { // STAGE 1 - 605 워밍업: 릴레이 브릿지 + 게이트 (크게 어렵지 않게)
+  { // STAGE 1 - 605 워밍업: 릴레이 브릿지 + 배터리로 문 충전 + 게이트
     width: 850, height: 400,
     grounds: [ {x:0,y:340,w:220,h:60}, {x:480,y:340,w:370,h:60} ],
     bridges: [
       { id:'b1', rect:{x:220,y:340,w:260,h:20}, mode:'hold',
         switchPads:[ {x:70,y:320,w:56,h:10}, {x:500,y:320,w:56,h:10} ] }
     ],
+    batteries: [ { id:'bat1', x:150, y:300, w:22, h:26 } ],
     movingPlatforms: [], crumbles: [], hazards: [], launchPads: [],
     gates: [
-      { id:'g1', plateA:{x:620,y:320,w:34,h:10}, plateB:{x:720,y:320,w:34,h:10}, gateX:800 }
+      { id:'g1', batteryId:'bat1', batterySlot:{x:640,y:296,w:26,h:34},
+        plateA:{x:700,y:320,w:34,h:10}, plateB:{x:790,y:320,w:34,h:10}, gateX:840 }
+    ]
+  },
+  { // STAGE 2 - 배터리를 더 멀리 왕복 + 움직이는 발판 타이밍
+    width: 950, height: 400,
+    grounds: [ {x:0,y:340,w:170,h:60}, {x:430,y:340,w:110,h:60}, {x:700,y:340,w:250,h:60} ],
+    bridges: [
+      { id:'b1', rect:{x:170,y:340,w:260,h:20}, mode:'hold',
+        switchPads:[ {x:60,y:320,w:50,h:10}, {x:440,y:320,w:50,h:10} ] }
+    ],
+    batteries: [ { id:'bat1', x:780, y:300, w:22, h:26 } ],
+    movingPlatforms: [ {x0:550,y0:340,x1:650,y1:340,w:60,h:15,period:2200} ],
+    crumbles: [], hazards: [], launchPads: [],
+    gates: [
+      { id:'g1', batteryId:'bat1', batterySlot:{x:460,y:296,w:26,h:34},
+        plateA:{x:760,y:320,w:34,h:10}, plateB:{x:860,y:320,w:34,h:10}, gateX:920 }
+    ]
+  },
+  { // STAGE 3 - 중력 반전 릴레이: 발판을 밟으면 "상대방" 중력이 반전되어 천장을 걸음
+    width: 900, height: 420, start:{x:40,y:300},
+    grounds: [
+      {x:0,   y:340, w:180, h:80},
+      {x:600, y:340, w:300, h:80}
+    ],
+    ceilings: [
+      {x:0, y:40, w:900, h:20}
+    ],
+    gravityPads: [
+      { id:'gp1', rect:{x:60,  y:320, w:60, h:10} },
+      { id:'gp2', rect:{x:760, y:320, w:60, h:10} }
+    ],
+    bridges: [], batteries: [], movingPlatforms: [], crumbles: [], hazards: [], launchPads: [],
+    gates: [
+      { id:'g_final', plateA:{x:640,y:320,w:34,h:10}, plateB:{x:820,y:320,w:34,h:10}, gateX:880 }
     ]
   }
-  // 스테이지 2부터는 같이 하나씩 디자인해서 추가할 예정
 ];
 let currentLevel = 0;
 let advancing = false;
@@ -277,6 +335,16 @@ function hazardActive(hz, t){
   return phase < hz.activeFraction;
 }
 
+// 중력 반전: gravityPads 중 하나라도 "나 자신이 아닌 다른 플레이어"가 밟고 있으면
+// 나는 반전 상태가 된다 (밟는 사람은 그 효과를 자기 자신에게는 적용받지 않음).
+function computeInversion(name, positions){
+  const lvl = L();
+  if(!lvl.gravityPads || !lvl.gravityPads.length) return false;
+  return lvl.gravityPads.some(pad =>
+    Object.entries(positions).some(([n,pos]) => n !== name && isOnPad(pos, pad.rect))
+  );
+}
+
 let myPlayer = { x: START_POS.x, y: START_POS.y, vx:0, vy:0, onGround:false };
 
 function escapeHtml(s){ return s.replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
@@ -312,7 +380,7 @@ function renderLogin(){
   app.innerHTML = `
     <div class="center fade-in">
       <h1 class="glow" style="font-size:28px;">정거장 605</h1>
-      <div class="muted" style="margin-bottom:24px;">Stage 1~15</div>
+      <div class="muted" style="margin-bottom:24px;">Stage 1~${LEVELS.length}</div>
       ${!configured ? `<div class="card" style="max-width:380px;border-color:var(--amber);color:var(--amber);">FIREBASE_CONFIG가 아직 설정되지 않았어요. 코드 상단 값을 콘솔에서 복사한 값으로 바꿔주세요.</div>` : ''}
       <div class="card" style="width:100%;max-width:380px;text-align:left;">
         <div class="small" style="margin-bottom:6px;">닉네임</div>
@@ -355,7 +423,7 @@ function renderBriefing(){
           지구와 더 가까운 궤도를 돌던 노후 정거장 <b>605</b>와 충돌했습니다.<br>
           충돌 충격으로 생명유지 장치까지 파손되어, 남은 산소는 이제
           <b class="glow">10분</b>뿐입니다.<br>
-          탈출 포드까지 가는 통로에는 15개의 격리 구역이 있으며,
+          탈출 포드까지 가는 통로에는 ${LEVELS.length}개의 격리 구역이 있으며,
           각 구역의 문은 두 사람이 동시에 압력판을 밟아야 열립니다.<br>
         </div>
         <div class="sf-hr"></div>
@@ -454,7 +522,7 @@ function renderShell(){
         </div>
       </div>
       <div style="display:flex;align-items:center;gap:12px;">
-        <span id="stageIndicator" style="font-family:'Share Tech Mono',monospace;font-size:18px;color:var(--amber);text-shadow:0 0 6px rgba(250,204,21,0.4);letter-spacing:1px;">STAGE 1/15</span>
+        <span id="stageIndicator" style="font-family:'Share Tech Mono',monospace;font-size:18px;color:var(--amber);text-shadow:0 0 6px rgba(250,204,21,0.4);letter-spacing:1px;">STAGE 1/${LEVELS.length}</span>
         <span class="status-pill pending" id="statusPill">연결 중...</span>
         <div class="players" id="playerChips"></div>
         <a class="link-reset" id="leaveLinkShell" style="white-space:nowrap;">나가기</a>
@@ -476,7 +544,7 @@ function renderShell(){
       <a class="link-reset" id="resetLink">방 전체 초기화 (스테이지 1부터)</a>
       <span class="small">|</span>
       <span class="small">디버그: 스테이지</span>
-      <input type="text" id="jumpStageInput" placeholder="1-15" style="width:60px;padding:4px 8px;font-size:12px;">
+      <input type="text" id="jumpStageInput" placeholder="1-${LEVELS.length}" style="width:60px;padding:4px 8px;font-size:12px;">
       <button id="jumpStageBtn" style="padding:4px 10px;font-size:12px;">이동</button>
     </div>
   `;
@@ -534,7 +602,7 @@ function isBridgeActive(bridge, myPos, remotePositions){
 
 function getActivePlatforms(bridgeStates, t){
   const lvl = L();
-  const solids = [ ...lvl.grounds ];
+  const solids = [ ...lvl.grounds, ...(lvl.ceilings||[]) ];
   lvl.bridges.forEach(b=>{
     solids.push(...b.switchPads);
     if(bridgeStates[b.id]) solids.push(b.rect);
@@ -550,6 +618,9 @@ function getActivePlatforms(bridgeStates, t){
   lvl.launchPads.forEach(lp=>{
     solids.push(lp.padA, lp.padB);
   });
+  (lvl.gravityPads||[]).forEach(pad=>{
+    solids.push(pad.rect);
+  });
   lvl.gates.forEach(g=>{
     solids.push(g.plateA, g.plateB);
     const open = roomRowState.gatesOpen && roomRowState.gatesOpen[g.id];
@@ -558,7 +629,8 @@ function getActivePlatforms(bridgeStates, t){
   return solids;
 }
 
-function stepPhysics(bridgeStates, t, dt){
+function stepPhysics(bridgeStates, t, dt, inverted){
+  inverted = !!inverted;
   const p = myPlayer;
   const lvl = L();
   const sp = startPos();
@@ -566,12 +638,21 @@ function stepPhysics(bridgeStates, t, dt){
   if(keys.has('ArrowLeft')||keys.has('KeyA')) moveX -= 1;
   if(keys.has('ArrowRight')||keys.has('KeyD')) moveX += 1;
   p.vx = moveX * MOVE_SPEED;
-  if((keys.has('Space')||keys.has('ArrowUp')||keys.has('KeyW')) && p.onGround){ p.vy = JUMP_V; p.onGround = false; playSfx('sfxJump'); }
-  p.vy += GRAVITY * dt;
-  if(p.vy > 14) p.vy = 14;
+
+  const gDir = inverted ? -1 : 1; // 중력이 끌어당기는 방향 (반전 시 위쪽 = 천장 방향)
+  if((keys.has('Space')||keys.has('ArrowUp')||keys.has('KeyW')) && p.onGround){
+    p.vy = JUMP_V * gDir; // 지금 붙어있는 면에서 멀어지는 방향으로 점프
+    p.onGround = false;
+    playSfx('sfxJump');
+  }
+  p.vy += GRAVITY * gDir * dt;
+  if(inverted){ if(p.vy < -14) p.vy = -14; } else { if(p.vy > 14) p.vy = 14; }
 
   const solids = getActivePlatforms(bridgeStates, t);
-  const box = ()=>({x:p.x-PW/2, y:p.y-PH, w:PW, h:PH});
+  // 일반 모드: p.y = 발 위치(바닥 기준). 반전 모드: p.y = 머리 위치(천장 기준)
+  const box = ()=> inverted
+    ? {x:p.x-PW/2, y:p.y, w:PW, h:PH}
+    : {x:p.x-PW/2, y:p.y-PH, w:PW, h:PH};
 
   p.x += p.vx * dt;
   let b = box();
@@ -588,11 +669,20 @@ function stepPhysics(bridgeStates, t, dt){
   lastLandedMpIndex = null;
   for(const s of solids){
     if(rectsOverlap(b,s)){
-      if(p.vy > 0){
-        if(!wasOnGround && p.vy > 3){ landingSquash = Math.min(1, p.vy / 14); spawnLandingBurst(p.x, s.y, '#4aa8ff', landingSquash); }
-        p.y = s.y; p.onGround = true; p.vy = 0; if(s.__mpIndex !== undefined) lastLandedMpIndex = s.__mpIndex;
+      if(!inverted){
+        if(p.vy > 0){
+          if(!wasOnGround && p.vy > 3){ landingSquash = Math.min(1, p.vy / 14); spawnLandingBurst(p.x, s.y, '#4aa8ff', landingSquash); }
+          p.y = s.y; p.onGround = true; p.vy = 0; if(s.__mpIndex !== undefined) lastLandedMpIndex = s.__mpIndex;
+        }
+        else if(p.vy < 0){ p.y = s.y + s.h + PH; p.vy = 0; }
+      } else {
+        // 반전 모드: 위로 움직이다(vy<0) 천장 아래면에 닿으면 "착지"
+        if(p.vy < 0){
+          if(!wasOnGround && p.vy < -3){ landingSquash = Math.min(1, -p.vy / 14); spawnLandingBurst(p.x, s.y+s.h, '#4aa8ff', landingSquash); }
+          p.y = s.y + s.h; p.onGround = true; p.vy = 0; if(s.__mpIndex !== undefined) lastLandedMpIndex = s.__mpIndex;
+        }
+        else if(p.vy > 0){ p.y = s.y - PH; p.vy = 0; }
       }
-      else if(p.vy < 0){ p.y = s.y + s.h + PH; p.vy = 0; }
       b = box();
     }
   }
@@ -605,8 +695,14 @@ function stepPhysics(bridgeStates, t, dt){
     }
   }
 
-  if(p.y > killY()){ p.x = sp.x; p.y = sp.y; p.vx = 0; p.vy = 0; }
-  if(p.y < PH) p.y = PH;
+  if(!inverted && p.y > killY()){ p.x = sp.x; p.y = sp.y; p.vx = 0; p.vy = 0; }
+  if(inverted && p.y < -60){ p.x = sp.x; p.y = sp.y; p.vx = 0; p.vy = 0; }
+  if(!inverted){
+    if(p.y < PH) p.y = PH;
+  } else {
+    if(p.y > (lvl.height||400) - PH) p.y = (lvl.height||400) - PH;
+    if(p.y < 0) p.y = 0;
+  }
   if(p.x < PW/2) p.x = PW/2;
   if(p.x > lvl.width - PW/2) p.x = lvl.width - PW/2;
 }
@@ -669,17 +765,47 @@ function updateAndDrawParticles(dt){
   ctx.imageSmoothingEnabled = wasSmoothing;
 }
 
-function drawPlayer(x,y,color,label,squash){
+function drawPlayer(x,y,color,label,squash,inverted){
   squash = squash || 0;
+  inverted = !!inverted;
   const w = PW * (1 + squash * 0.35);
   const h = PH * (1 - squash * 0.28);
+  ctx.save();
   ctx.fillStyle = color; ctx.shadowColor = color; ctx.shadowBlur = 8;
-  ctx.fillRect(x-w/2, y-h, w, h);
+  if(inverted){
+    // y는 머리(천장에 붙은 쪽) 위치. 아래로 몸이 뻗어있음.
+    ctx.fillRect(x-w/2, y, w, h);
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = '#050810';
+    ctx.fillRect(x-6, y+h-12, 4,4); ctx.fillRect(x+2, y+h-12, 4,4);
+    ctx.fillStyle = '#c7d1d9'; ctx.font = '10px monospace'; ctx.textAlign = 'center';
+    ctx.fillText(label + ' ▲', x, y+h+14);
+  } else {
+    ctx.fillRect(x-w/2, y-h, w, h);
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = '#050810';
+    ctx.fillRect(x-6, y-h+8, 4,4); ctx.fillRect(x+2, y-h+8, 4,4);
+    ctx.fillStyle = '#c7d1d9'; ctx.font = '10px monospace'; ctx.textAlign = 'center';
+    ctx.fillText(label, x, y-PH-6);
+  }
+  ctx.textAlign = 'left';
+  ctx.restore();
+}
+
+function drawBattery(cx, cy){
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.shadowColor = '#fbbf24'; ctx.shadowBlur = 7;
+  ctx.fillStyle = '#fbbf24';
+  ctx.fillRect(-9, -12, 18, 24);
+  ctx.fillRect(-4, -16, 8, 5);
   ctx.shadowBlur = 0;
-  ctx.fillStyle = '#050810';
-  ctx.fillRect(x-6, y-h+8, 4,4); ctx.fillRect(x+2, y-h+8, 4,4);
-  ctx.fillStyle = '#c7d1d9'; ctx.font = '10px monospace'; ctx.textAlign = 'center';
-  ctx.fillText(label, x, y-PH-6); ctx.textAlign = 'left';
+  ctx.strokeStyle = '#5c4405';
+  ctx.lineWidth = 1.5;
+  ctx.strokeRect(-9, -12, 18, 24);
+  ctx.fillStyle = '#5c4405';
+  ctx.fillRect(-5, -4, 10, 3);
+  ctx.restore();
 }
 
 function drawLevel(remotePositions, bridgeStates, t, dt){
@@ -691,6 +817,7 @@ function drawLevel(remotePositions, bridgeStates, t, dt){
 
   ctx.fillStyle = '#141b24'; ctx.strokeStyle = '#2f6a99'; ctx.lineWidth = 1.5;
   lvl.grounds.forEach(r=>{ ctx.fillRect(r.x,r.y,r.w,r.h); ctx.strokeRect(r.x,r.y,r.w,r.h); });
+  (lvl.ceilings||[]).forEach(r=>{ ctx.fillRect(r.x,r.y,r.w,r.h); ctx.strokeRect(r.x,r.y,r.w,r.h); });
 
   lvl.bridges.forEach(bridge=>{
     const active = bridgeStates[bridge.id];
@@ -747,20 +874,59 @@ function drawLevel(remotePositions, bridgeStates, t, dt){
     ctx.fillText('LAUNCH', lp.padB.x, lp.padB.y-4);
   });
 
+  // 중력 반전 발판
+  (lvl.gravityPads||[]).forEach(pad=>{
+    const pressed = isOnPad(myPlayer, pad.rect) || Object.values(remotePositions).some(pos=>isOnPad(pos, pad.rect));
+    ctx.fillStyle = pressed ? 'rgba(192,132,252,0.55)' : 'rgba(167,139,250,0.28)';
+    ctx.strokeStyle = '#a78bfa';
+    ctx.fillRect(pad.rect.x,pad.rect.y,pad.rect.w,pad.rect.h);
+    ctx.strokeRect(pad.rect.x,pad.rect.y,pad.rect.w,pad.rect.h);
+    ctx.fillStyle = '#c7d1d9'; ctx.font = '9px monospace';
+    ctx.fillText('GRAV', pad.rect.x, pad.rect.y-4);
+  });
+
+  // 게이트 (배터리형 / 일반형 공용 색상 규칙 적용)
   lvl.gates.forEach(g=>{
-    const open = roomRowState.gatesOpen && roomRowState.gatesOpen[g.id];
-    ctx.fillStyle = open ? '#4aa8ff' : '#facc15';
+    const state = gateColorState(g);
+    const clr = GATE_COLORS[state];
+    ctx.fillStyle = clr;
     ctx.fillRect(g.plateA.x,g.plateA.y,g.plateA.w,g.plateA.h);
     ctx.fillRect(g.plateB.x,g.plateB.y,g.plateB.w,g.plateB.h);
-    ctx.fillStyle = '#c7d1d9'; ctx.font='9px monospace';
+    ctx.fillStyle = '#0a0f16'; ctx.font='9px monospace';
     ctx.fillText('A', g.plateA.x+g.plateA.w/2-3, g.plateA.y-4);
     ctx.fillText('B', g.plateB.x+g.plateB.w/2-3, g.plateB.y-4);
 
     const wallH = (lvl.height||400) - 60;
-    ctx.fillStyle = open ? 'rgba(74,168,255,0.12)' : 'rgba(227,72,72,0.22)';
+    ctx.fillStyle = GATE_WALL_FILL[state];
     ctx.fillRect(g.gateX, 0, 12, wallH);
-    ctx.strokeStyle = open ? '#4aa8ff' : '#e34848';
+    ctx.strokeStyle = clr;
     ctx.strokeRect(g.gateX, 0, 12, wallH);
+
+    if(g.batteryId){
+      const charged = state === 'charged' || state === 'open';
+      ctx.strokeStyle = charged ? '#e34848' : 'rgba(138,152,168,0.7)';
+      ctx.setLineDash(charged ? [] : [4,4]);
+      ctx.strokeRect(g.batterySlot.x, g.batterySlot.y, g.batterySlot.w, g.batterySlot.h);
+      ctx.setLineDash([]);
+      ctx.fillStyle = charged ? 'rgba(227,72,72,0.22)' : 'rgba(138,152,168,0.10)';
+      ctx.fillRect(g.batterySlot.x, g.batterySlot.y, g.batterySlot.w, g.batterySlot.h);
+      ctx.fillStyle = '#c7d1d9'; ctx.font='9px monospace';
+      ctx.fillText('SLOT', g.batterySlot.x, g.batterySlot.y-4);
+    }
+  });
+
+  // 배터리 아이템 (아직 문에 장착되지 않은 것만 그림)
+  (lvl.batteries||[]).forEach(bat=>{
+    const gate = lvl.gates.find(g=>g.batteryId===bat.id);
+    const delivered = gate && roomRowState.batteryCharged && roomRowState.batteryCharged[gate.id];
+    if(delivered) return;
+    const heldBy = roomRowState.batteryHeld && roomRowState.batteryHeld[bat.id];
+    if(heldBy){
+      const pos = heldBy === myName ? myPlayer : remotePositions[heldBy];
+      if(pos) drawBattery(pos.x, pos.y - PH - 16);
+    } else {
+      drawBattery(bat.x + bat.w/2, bat.y + bat.h/2);
+    }
   });
 
   if(Math.random() < 0.75) spawnTrailParticle(myPlayer.x, myPlayer.y, '#4aa8ff');
@@ -769,8 +935,13 @@ function drawLevel(remotePositions, bridgeStates, t, dt){
   });
   updateAndDrawParticles(dt || 1);
 
-  Object.entries(remotePositions).forEach(([name,pos])=>drawPlayer(pos.x, pos.y, '#facc15', name));
-  drawPlayer(myPlayer.x, myPlayer.y, '#4aa8ff', myName, landingSquash);
+  const allPosForInv = { ...remotePositions, [myName]: myPlayer };
+  Object.entries(remotePositions).forEach(([name,pos])=>{
+    const inv = computeInversion(name, allPosForInv);
+    drawPlayer(pos.x, pos.y, '#facc15', name, 0, inv);
+  });
+  const myInv = computeInversion(myName, allPosForInv);
+  drawPlayer(myPlayer.x, myPlayer.y, '#4aa8ff', myName, landingSquash, myInv);
   landingSquash *= Math.pow(0.8, dt || 1); // decay the squash back to normal over a few frames
   if(landingSquash < 0.02) landingSquash = 0;
 }
@@ -858,6 +1029,9 @@ function gameLoop(){
   const bridgeStates = {};
   lvl.bridges.forEach(b=>{ bridgeStates[b.id] = isBridgeActive(b, myPlayer, preview); });
 
+  // 이번 프레임의 중력 반전 여부 (물리 계산 전에 미리 판정)
+  const iAmInverted = computeInversion(myName, { ...preview, [myName]: myPlayer });
+
   if(riddenMpIndex !== null && lvl.movingPlatforms[riddenMpIndex]){
     const mp = lvl.movingPlatforms[riddenMpIndex];
     const isVertical = mp.x0 === mp.x1;
@@ -876,7 +1050,7 @@ function gameLoop(){
     riddenMpPrevRect = null;
   }
 
-  stepPhysics(bridgeStates, t, dt);
+  stepPhysics(bridgeStates, t, dt, iAmInverted);
   riddenMpIndex = lastLandedMpIndex;
 
   lvl.bridges.forEach(b=>{
@@ -898,6 +1072,25 @@ function gameLoop(){
       db.ref(`rooms605/${roomCode}/state/crumbleStart/${c.id}`).set(t);
       roomRowState.crumbleStart = roomRowState.crumbleStart || {};
       roomRowState.crumbleStart[c.id] = t;
+    }
+  });
+
+  // 배터리 획득 / 전달
+  (lvl.batteries||[]).forEach(bat=>{
+    const gate = lvl.gates.find(g=>g.batteryId===bat.id);
+    const alreadyDelivered = gate && roomRowState.batteryCharged && roomRowState.batteryCharged[gate.id];
+    if(alreadyDelivered) return;
+    const heldBy = roomRowState.batteryHeld && roomRowState.batteryHeld[bat.id];
+    const myBox = { x: myPlayer.x-PW/2, y: myPlayer.y-PH, w:PW, h:PH };
+    if(!heldBy){
+      if(rectsOverlap(myBox, bat)){
+        db.ref(`rooms605/${roomCode}/state/batteryHeld/${bat.id}`).transaction(cur=> cur ? cur : myName);
+      }
+    } else if(heldBy === myName && gate){
+      if(rectsOverlap(myBox, gate.batterySlot)){
+        db.ref(`rooms605/${roomCode}/state/batteryCharged/${gate.id}`).set(true);
+        db.ref(`rooms605/${roomCode}/state/batteryHeld/${bat.id}`).remove();
+      }
     }
   });
 
@@ -939,6 +1132,10 @@ function gameLoop(){
   lvl.gates.forEach(g=>{
     const already = roomRowState.gatesOpen && roomRowState.gatesOpen[g.id];
     if(already) return;
+    if(g.batteryId){
+      const charged = roomRowState.batteryCharged && roomRowState.batteryCharged[g.id];
+      if(!charged) return; // 배터리가 장착되기 전엔 압력판이 반응하지 않음
+    }
     const iOnA = isOnPad(myPlayer, g.plateA), iOnB = isOnPad(myPlayer, g.plateB);
     let otherOnA=false, otherOnB=false;
     Object.values(remote).forEach(pos=>{
@@ -991,6 +1188,8 @@ function gameLoop(){
           current.bridgesOn = {};
           current.gatesOpen = {};
           current.crumbleStart = {};
+          current.batteryHeld = {};
+          current.batteryCharged = {};
           return current;
         });
       }, 1400);
@@ -1086,7 +1285,7 @@ function renderWinOverlay(){
       <div class="sf-panel-title ok">// 탈출 성공 //</div>
       <div class="sf-body">
         탈출 포드가 정거장 605에서 무사히 분리되었습니다.<br>
-        15개 격리 구역을 모두 통과해 승무원 전원이 두 번째 탈출에도 성공했습니다.<br>
+        ${LEVELS.length}개 격리 구역을 모두 통과해 승무원 전원이 두 번째 탈출에도 성공했습니다.<br>
         <span class="glow">[End 2] 임무 성공 - 완전한 귀환</span>
       </div>
       <button id="shareBtnWon" style="width:100%;border-color:var(--green-dim);">결과 공유하기</button>
@@ -1172,6 +1371,8 @@ function setupRealtime(){
     roomRowState.gatesOpen = nextGatesOpen;
     roomRowState.crumbleStart = val.crumbleStart || {};
     roomRowState.ready = val.ready || {};
+    roomRowState.batteryHeld = val.batteryHeld || {};
+    roomRowState.batteryCharged = val.batteryCharged || {};
     roomRowState.gameStarted = !!val.gameStarted;
     roomRowState.startTime = val.startTime || null;
     roomRowState.dead = !!val.dead;
