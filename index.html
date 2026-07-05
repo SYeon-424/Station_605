@@ -271,26 +271,31 @@ const LEVELS = [
     movingPlatforms: [ {x0:550,y0:340,x1:650,y1:340,w:60,h:15,period:2200} ],
     crumbles: [], hazards: [], launchPads: [],
     gates: [
-      { id:'g1', batteryId:'bat1', batterySlot:{x:460,y:296,w:26,h:34},
+      { id:'g1', batteryId:'bat1', batterySlot:{x:460,y:258,w:26,h:34},
         plateA:{x:760,y:320,w:34,h:10}, plateB:{x:860,y:320,w:34,h:10}, gateX:920 }
     ]
   },
   { // STAGE 3 - 중력 반전 릴레이: 발판을 밟으면 "상대방" 중력이 반전되어 천장을 걸음
+    // 절벽(180~600 사이 빈 공간) 한중간에 배터리가 떠 있어서, 건너가던 사람을
+    // 잠깐 정상 중력으로 풀어줬다가(떨어지며 배터리 획득) 바닥에 닿기 전에
+    // 다시 반전시켜 천장으로 돌려보내는 타이밍 플레이가 필요함.
     width: 900, height: 420, start:{x:40,y:300},
     grounds: [
       {x:0,   y:340, w:180, h:80},
       {x:600, y:340, w:300, h:80}
     ],
     ceilings: [
-      {x:0, y:40, w:900, h:20}
+      {x:0, y:0, w:900, h:60} // 천장 뒤가 완전히 막혀 있어서 반전 중 절대 뚫고 올라갈 수 없음
     ],
     gravityPads: [
       { id:'gp1', rect:{x:60,  y:320, w:60, h:10} },
       { id:'gp2', rect:{x:760, y:320, w:60, h:10} }
     ],
-    bridges: [], batteries: [], movingPlatforms: [], crumbles: [], hazards: [], launchPads: [],
+    batteries: [ { id:'bat1', x:378, y:190, w:22, h:26 } ],
+    bridges: [], movingPlatforms: [], crumbles: [], hazards: [], launchPads: [],
     gates: [
-      { id:'g_final', plateA:{x:640,y:320,w:34,h:10}, plateB:{x:820,y:320,w:34,h:10}, gateX:880 }
+      { id:'g_final', batteryId:'bat1', batterySlot:{x:700,y:296,w:26,h:34},
+        plateA:{x:640,y:320,w:34,h:10}, plateB:{x:820,y:320,w:34,h:10}, gateX:880 }
     ]
   }
 ];
@@ -916,6 +921,7 @@ function drawLevel(remotePositions, bridgeStates, t, dt){
   });
 
   // 배터리 아이템 (아직 문에 장착되지 않은 것만 그림)
+  const allPosForBattery = { ...remotePositions, [myName]: myPlayer };
   (lvl.batteries||[]).forEach(bat=>{
     const gate = lvl.gates.find(g=>g.batteryId===bat.id);
     const delivered = gate && roomRowState.batteryCharged && roomRowState.batteryCharged[gate.id];
@@ -923,7 +929,11 @@ function drawLevel(remotePositions, bridgeStates, t, dt){
     const heldBy = roomRowState.batteryHeld && roomRowState.batteryHeld[bat.id];
     if(heldBy){
       const pos = heldBy === myName ? myPlayer : remotePositions[heldBy];
-      if(pos) drawBattery(pos.x, pos.y - PH - 16);
+      if(pos){
+        const holderInverted = computeInversion(heldBy, allPosForBattery);
+        const by = holderInverted ? pos.y + PH + 16 : pos.y - PH - 16;
+        drawBattery(pos.x, by);
+      }
     } else {
       drawBattery(bat.x + bat.w/2, bat.y + bat.h/2);
     }
@@ -1081,7 +1091,9 @@ function gameLoop(){
     const alreadyDelivered = gate && roomRowState.batteryCharged && roomRowState.batteryCharged[gate.id];
     if(alreadyDelivered) return;
     const heldBy = roomRowState.batteryHeld && roomRowState.batteryHeld[bat.id];
-    const myBox = { x: myPlayer.x-PW/2, y: myPlayer.y-PH, w:PW, h:PH };
+    const myBox = iAmInverted
+      ? { x: myPlayer.x-PW/2, y: myPlayer.y, w:PW, h:PH }
+      : { x: myPlayer.x-PW/2, y: myPlayer.y-PH, w:PW, h:PH };
     if(!heldBy){
       if(rectsOverlap(myBox, bat)){
         db.ref(`rooms605/${roomCode}/state/batteryHeld/${bat.id}`).transaction(cur=> cur ? cur : myName);
