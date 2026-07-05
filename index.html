@@ -8,7 +8,7 @@
 <title>정거장 605</title>
 <meta name="theme-color" content="#080b10">
 <meta name="description" content="정거장 605 — 협동 탈출 플랫포머">
-<link rel="manifest" href="manifest.json">
+<link rel="manifest" href="manifest-605.json">
 <link rel="icon" href="icon-192.png" sizes="192x192" type="image/png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -353,11 +353,10 @@ function renderBriefing(){
         <div class="sf-body">
           정거장 706에서 발사된 탈출 포드가 궤도 계산 오류로 항로를 벗어나,
           지구와 더 가까운 궤도를 돌던 노후 정거장 <b>605</b>와 충돌했습니다.<br>
-          충돌 충격으로 605의 생명유지 장치까지 파손되어, 남은 산소는 이제
+          충돌 충격으로 생명유지 장치까지 파손되어, 남은 산소는 이제
           <b class="glow">10분</b>뿐입니다.<br>
           탈출 포드까지 가는 통로에는 15개의 격리 구역이 있으며,
           각 구역의 문은 두 사람이 동시에 압력판을 밟아야 열립니다.<br>
-          두 번째 탈출이다. 이번엔 반드시 살아서 나가라.
         </div>
         <div class="sf-hr"></div>
         <div class="small" style="margin-bottom:6px;letter-spacing:1px;">READY CHECK</div>
@@ -690,7 +689,7 @@ function drawLevel(remotePositions, bridgeStates, t, dt){
   ctx.strokeStyle = 'rgba(74,168,255,0.05)';
   for(let x=0;x<lvl.width;x+=40){ ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,h); ctx.stroke(); }
 
-  ctx.fillStyle = '#141b24'; ctx.strokeStyle = '#2f6b47'; ctx.lineWidth = 1.5;
+  ctx.fillStyle = '#141b24'; ctx.strokeStyle = '#2f6a99'; ctx.lineWidth = 1.5;
   lvl.grounds.forEach(r=>{ ctx.fillRect(r.x,r.y,r.w,r.h); ctx.strokeRect(r.x,r.y,r.w,r.h); });
 
   lvl.bridges.forEach(bridge=>{
