@@ -1,0 +1,15 @@
+{
+  "name": "정거장 605",
+  "short_name": "정거장 605",
+  "description": "정거장 605 — 협동 탈출 플랫포머",
+  "start_url": "station_605.html",
+  "scope": ".",
+  "display": "standalone",
+  "background_color": "#080b10",
+  "theme_color": "#080b10",
+  "orientation": "any",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
