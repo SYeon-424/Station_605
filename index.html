@@ -304,10 +304,10 @@ const LEVELS = [
     width: 1100, height: 550, start:{x:50,y:170},
     grounds: [
       {x:0,   y:190, w:210, h:80},   // 좌상단 시작 발판 (배터리 슬롯이 바로 위에 떠 있음)
-      {x:815, y:160, w:265, h:90},   // 우상단 발판 (배터리 + 최종 게이트 구간)
+      {x:815, y:270, w:265, h:90},   // 우상단 발판 (배터리 + 최종 게이트 구간) — 높이 낮춤
       {x:0,   y:490, w:1100, h:60}   // 맨 아래 바닥
     ],
-    batteries: [ { id:'bat1', x:955, y:134, w:22, h:26 } ],
+    batteries: [ { id:'bat1', x:955, y:244, w:22, h:26 } ],
     bridges: [],
     movingPlatforms: [],
     crumbles: [
@@ -316,7 +316,7 @@ const LEVELS = [
     ],
     hazards: [],
     launchPads: [
-      { id:'lp1', padA:{x:400,y:470,w:34,h:10}, padB:{x:450,y:470,w:34,h:10}, boost:-20 }
+      { id:'lp1', padA:{x:230,y:470,w:34,h:10}, padB:{x:280,y:470,w:34,h:10}, boost:-25 } // 더 왼쪽 + 더 높이
     ],
     gates: [
       { id:'g_final', batteryId:'bat1', batterySlot:{x:60,y:110,w:26,h:34},
