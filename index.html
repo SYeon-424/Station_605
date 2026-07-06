@@ -364,7 +364,7 @@ const LEVELS = [
       { id:'gp2', rect:{x:900, y:320, w:60, h:10} }
     ],
     movingPlatforms: [
-      { x0:340, y0:220, x1:650, y1:220, w:70, h:15, period:2600 } // 화면 중간쯤 높이 — 반전을 풀어 떨어뜨렸다가, 건너간 뒤 다시 반전시켜 반대쪽 천장에 붙여야 함
+      { x0:340, y0:220, x1:650, y1:220, w:70, h:15, period:5400 } // 화면 중간쯤 높이 — 반전을 풀어 떨어뜨렸다가, 건너간 뒤 다시 반전시켜 반대쪽 천장에 붙여야 함 (많이 느리게)
     ],
     batteries: [
       { id:'bat1', x:80,  y:270, w:22, h:26 },
@@ -1075,6 +1075,18 @@ function getInterpolatedRemotePositions(){
   return out;
 }
 
+// 렌더링용(부드러운 보간, 일부러 약간의 지연을 둠)과는 별개로, 게이트/발판/중력반전처럼
+// "즉각 반응해야 하는" 판정에는 지연을 더하지 않은 가장 최근 원격 좌표를 쓴다.
+// 이전에는 판정에도 보간 좌표(RENDER_DELAY만큼 지연됨)를 그대로 썼는데, 그게 협동
+// 기믹(특히 중력 발판)에서 "밟았는데 한참 있다 반응한다"는 체감 딜레이의 원인이었다.
+function getLatestRemotePositions(){
+  const out = {};
+  Object.entries(lastRemoteSnapshots).forEach(([name, buf])=>{
+    if(buf.length) out[name] = { x: buf[buf.length-1].x, y: buf[buf.length-1].y };
+  });
+  return out;
+}
+
 let lastFrameTime = null;
 let lastKnownRemainingMs = OXYGEN_TOTAL_MS;
 
@@ -1103,7 +1115,7 @@ function gameLoop(){
   let dt = lastFrameTime ? (t - lastFrameTime) / 16.6667 : 1;
   dt = Math.max(0.2, Math.min(2.5, dt));
   lastFrameTime = t;
-  const preview = getInterpolatedRemotePositions();
+  const latestRemote = getLatestRemotePositions();
 
   if(roomRowState.startTime){
     const remainingMs = OXYGEN_TOTAL_MS - (t - roomRowState.startTime);
@@ -1122,10 +1134,10 @@ function gameLoop(){
   }
 
   const bridgeStates = {};
-  lvl.bridges.forEach(b=>{ bridgeStates[b.id] = isBridgeActive(b, myPlayer, preview); });
+  lvl.bridges.forEach(b=>{ bridgeStates[b.id] = isBridgeActive(b, myPlayer, latestRemote); });
 
-  // 이번 프레임의 중력 반전 여부 (물리 계산 전에 미리 판정)
-  const iAmInverted = computeInversion(myName, { ...preview, [myName]: myPlayer });
+  // 이번 프레임의 중력 반전 여부 (물리 계산 전에 미리 판정) - 지연 없는 최신 좌표 사용
+  const iAmInverted = computeInversion(myName, { ...latestRemote, [myName]: myPlayer });
 
   // 반전된 순간에는 발판 탑승 로직을 끈다 — 안 그러면 발판이 계속 붙잡고 있어서
   // 천장으로 다시 빨려 올라가는 전환이 어색해짐 (일반 중력 전용 로직이라 반전과는 안 맞음)
@@ -1167,7 +1179,7 @@ function gameLoop(){
     }
   });
 
-  const remote = getInterpolatedRemotePositions();
+  const remote = getLatestRemotePositions();
 
   lvl.crumbles.forEach(c=>{
     if(!isOnPad(myPlayer, c.rect)) return;
@@ -1309,7 +1321,8 @@ function gameLoop(){
     banner.innerHTML = '';
   }
 
-  drawLevel(remote, bridgeStates, t, dt);
+  const remoteSmooth = getInterpolatedRemotePositions(); // 렌더링만 부드럽게, 판정은 위에서 이미 최신 좌표로 끝냈음
+  drawLevel(remoteSmooth, bridgeStates, t, dt);
   rafId = requestAnimationFrame(gameLoop);
 }
 
