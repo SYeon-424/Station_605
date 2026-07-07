@@ -496,7 +496,7 @@ const LEVELS = [
     bridges: [], crumbles: [],
     movingPlatforms: [
       { x0:250, y0:640, x1:470, y1:640, w:70, h:15, period:2600 }, // 좌우 셔틀
-      { x0:650, y0:640, x1:650, y1:320, w:70, h:15, period:3200 }  // 상하 엘리베이터
+      { x0:650, y0:620, x1:650, y1:320, w:70, h:15, period:3200 }  // 상하 엘리베이터 (시작점이 바닥보다 살짝 위)
     ],
     hazards: [
       { id:'h1', rect:{x:1040,y:260,w:60,h:60}, period:1400, activeFraction:0.4 }
@@ -931,18 +931,22 @@ function getActivePlatforms(bridgeStates, t){
 
 // p.y는 항상 캐릭터의 "수직 중심점"을 의미한다 (반전 여부와 무관하게 고정된 기준).
 let diedThisFrame = false;
-// 발판 아이템: 이번 프레임에 점프가 발생했는지, 그리고 그 "발밑" 접점 좌표.
-let jumpedThisFrame = false;
-let lastJumpOrigin = null;
+// 발판 아이템: 충전한 채로 점프하면 "무장" 상태가 되고, 포물선의 정점(속도 방향이
+// 뒤집히는 순간)에 도달하는 프레임에 그 자리(발밑)에 발판을 스폰하도록 예약한다.
+let platformArmed = false;
+let platformArmedItemId = null;
+let platformArmedPrevVy = 0;
+let platformSpawnPending = null; // 이번 프레임에 정점에 도달했다면 {itemId, rect}
 
 function stepPhysics(bridgeStates, t, dt, inverted){
   inverted = !!inverted;
   diedThisFrame = false;
-  jumpedThisFrame = false;
+  platformSpawnPending = null;
   const p = myPlayer;
   const lvl = L();
   const sp = startPos();
   const lvlH = lvl.height || 400;
+  if(p.onGround) platformArmed = false; // 착지해있는 동안은 무장 상태를 새로 시작할 준비만 함
   let moveX = 0;
   if(keys.has('ArrowLeft')||keys.has('KeyA')) moveX -= 1;
   if(keys.has('ArrowRight')||keys.has('KeyD')) moveX += 1;
@@ -953,13 +957,33 @@ function stepPhysics(bridgeStates, t, dt, inverted){
     p.vy = JUMP_V * gDir; // 지금 붙어있는 면에서 멀어지는 방향으로 점프
     p.onGround = false;
     playSfx('sfxJump');
-    jumpedThisFrame = true;
-    // 발판 아이템 충전 상태라면, 방금 발을 딛고 있던 그 접점을 기억해뒀다가
-    // gameLoop에서 그 자리에 임시 발판을 만든다 (반전 상태면 천장쪽 접점 기준).
-    lastJumpOrigin = { x: p.x, feetY: inverted ? (p.y - PH/2) : (p.y + PH/2), inverted };
+    // 발판 아이템을 충전하고 있었다면, 이번 점프의 정점에서 발판을 스폰하도록 무장한다.
+    const chargedItem = (lvl.platformItems||[]).find(pi=>
+      roomRowState.platformCharge && roomRowState.platformCharge[pi.id] === myName
+    );
+    if(chargedItem){
+      platformArmed = true;
+      platformArmedItemId = chargedItem.id;
+      platformArmedPrevVy = p.vy;
+    }
   }
   p.vy += GRAVITY * gDir * dt;
   if(inverted){ if(p.vy < -14) p.vy = -14; } else { if(p.vy > 14) p.vy = 14; }
+
+  if(platformArmed && !p.onGround){
+    const flipped = (platformArmedPrevVy < 0 && p.vy >= 0) || (platformArmedPrevVy > 0 && p.vy <= 0);
+    if(flipped){
+      const feetY = inverted ? (p.y - PH/2) : (p.y + PH/2);
+      const rect = inverted
+        ? { x: p.x - PLATFORM_SPAWN_W/2, y: feetY - PLATFORM_SPAWN_H, w:PLATFORM_SPAWN_W, h:PLATFORM_SPAWN_H }
+        : { x: p.x - PLATFORM_SPAWN_W/2, y: feetY,                    w:PLATFORM_SPAWN_W, h:PLATFORM_SPAWN_H };
+      platformSpawnPending = { itemId: platformArmedItemId, rect };
+      platformArmed = false;
+      platformArmedItemId = null;
+    } else {
+      platformArmedPrevVy = p.vy;
+    }
+  }
 
   const solids = getActivePlatforms(bridgeStates, t);
   const box = ()=> ({x:p.x-PW/2, y:p.y-PH/2, w:PW, h:PH});
@@ -1191,6 +1215,24 @@ function drawSpawnedPlatform(rect, remainingFrac){
   ctx.restore();
 }
 
+// 발판 아이템을 충전 중인 플레이어의 몸 주변에 은은하게 펄스치는 빛 효과
+function drawChargeAura(cx, cy, t){
+  const pulse = 0.5 + 0.5 * Math.sin(t / 180);
+  ctx.save();
+  ctx.globalAlpha = 0.3 + 0.25 * pulse;
+  ctx.fillStyle = '#22d3ee';
+  ctx.shadowColor = '#22d3ee';
+  ctx.shadowBlur = 12 + 6 * pulse;
+  ctx.beginPath();
+  ctx.ellipse(cx, cy, PW * 0.95, PH * 0.8, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+function isPlayerCharged(name){
+  const lvl = L();
+  return (lvl.platformItems||[]).some(pi=> roomRowState.platformCharge && roomRowState.platformCharge[pi.id] === name);
+}
+
 function drawLevel(remotePositions, bridgeStates, t, dt){
   const lvl = L();
   const h = lvl.height || 400;
@@ -1340,9 +1382,11 @@ function drawLevel(remotePositions, bridgeStates, t, dt){
   const allPosForInv = { ...remotePositions, [myName]: myPlayer };
   Object.entries(remotePositions).forEach(([name,pos])=>{
     const inv = computeInversion(name, allPosForInv);
+    if(isPlayerCharged(name)) drawChargeAura(pos.x, pos.y, t);
     drawPlayer(pos.x, pos.y, '#facc15', name, 0, inv);
   });
   const myInv = computeInversion(myName, allPosForInv);
+  if(isPlayerCharged(myName)) drawChargeAura(myPlayer.x, myPlayer.y, t);
   drawPlayer(myPlayer.x, myPlayer.y, '#4aa8ff', myName, landingSquash, myInv);
   landingSquash *= Math.pow(0.8, dt || 1); // decay the squash back to normal over a few frames
   if(landingSquash < 0.02) landingSquash = 0;
@@ -1539,17 +1583,10 @@ function gameLoop(){
       db.ref(`rooms605/${roomCode}/state/platformCharge/${item.id}`).transaction(cur=> cur ? cur : myName);
     }
   });
-  if(jumpedThisFrame && lastJumpOrigin){
-    const chargedItem = (lvl.platformItems||[]).find(pi=>
-      roomRowState.platformCharge && roomRowState.platformCharge[pi.id] === myName
-    );
-    if(chargedItem){
-      const rect = lastJumpOrigin.inverted
-        ? { x: lastJumpOrigin.x - PLATFORM_SPAWN_W/2, y: lastJumpOrigin.feetY - PLATFORM_SPAWN_H, w:PLATFORM_SPAWN_W, h:PLATFORM_SPAWN_H }
-        : { x: lastJumpOrigin.x - PLATFORM_SPAWN_W/2, y: lastJumpOrigin.feetY,                    w:PLATFORM_SPAWN_W, h:PLATFORM_SPAWN_H };
-      db.ref(`rooms605/${roomCode}/state/platformActive/${chargedItem.id}`).set({ ...rect, until: t + PLATFORM_ITEM_DURATION_MS });
-      db.ref(`rooms605/${roomCode}/state/platformCharge/${chargedItem.id}`).remove();
-    }
+  if(platformSpawnPending){
+    const { itemId, rect } = platformSpawnPending;
+    db.ref(`rooms605/${roomCode}/state/platformActive/${itemId}`).set({ ...rect, until: t + PLATFORM_ITEM_DURATION_MS });
+    db.ref(`rooms605/${roomCode}/state/platformCharge/${itemId}`).remove();
   }
 
   const LAUNCH_GRACE_MS = 400;
