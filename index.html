@@ -406,10 +406,6 @@ const LEVELS = [
     ceilings: [
       {x:300, y:60, w:740, h:40} // 엘리베이터 꼭대기 근처부터 도착지 바닥 위까지 쭉 이어진 천장
     ],
-    gravityPads: [
-      { id:'gp1', rect:{x:60,  y:320, w:60, h:10} },
-      { id:'gp2', rect:{x:840, y:320, w:60, h:10} }
-    ],
     movingPlatforms: [
       { x0:310, y0:335, x1:310, y1:140, w:70, h:15, period:3600 } // 수직 엘리베이터
     ],
@@ -618,7 +614,8 @@ const LEVELS = [
     movingPlatforms: [],
     crumbles: [
       { id:'c1', rect:{x:100, y:430, w:70, h:18}, warnMs:650, fallMs:2200 },
-      { id:'c2', rect:{x:10, y:480, w:70, h:18}, warnMs:650, fallMs:2200 }
+      { id:'c2', rect:{x:10, y:480, w:70, h:18}, warnMs:650, fallMs:2200 },
+      { id:'c3', rect:{x:10, y:420, w:70, h:18}, warnMs:650, fallMs:2200 }
     ],
     hazards: [],
     launchPads: [],
