@@ -587,42 +587,50 @@ const LEVELS = [
     ]
   },
   { // STAGE 9
-    width: 1600, height: 700,
+    width: 2000, height: 700,
     start: { x:40, y:580 },
 
     grounds: [
       // 시작 바닥
-      { x:0,    y:620, w:240, h:60 },
+      { x:0,    y:620, w:180, h:60 },
 
       // F자 세로 기둥
       { x:180,  y:280, w:60,  h:340 },
 
       // F자 윗가로
-      { x:180,  y:280, w:310, h:60 },
+      { x:180,  y:280, w:180, h:60 },
 
       // F자 가운데 가로
-      { x:180,  y:440, w:250, h:60 },
+      { x:180,  y:440, w:120, h:60 },
 
       // 위쪽 긴 발판
-      { x:460,  y:40,  w:400, h:60 },
+      { x:650,  y:40,  w:300, h:60 },
 
       // 아래 작은 발판
-      { x:560,  y:610, w:250, h:50 },
-      { x:880, y:610, w:250, h:50 },
+      { x:900,  y:610, w:120, h:50 },
+      { x:1220, y:610, w:180, h:50 },
 
       // 오른쪽 공중 발판
-      { x:1100, y:360, w:450, h:50 }
+      { x:1460, y:360, w:280, h:50 }
     ],
 
     bridges: [],
     movingPlatforms: [],
-    crumbles: [],
+    crumbles: [
+      { id:'c1', rect:{x:80, y:600, w:70, h:18}, warnMs:650, fallMs:2200 },
+      { id:'c2', rect:{x:-40, y:540, w:70, h:18}, warnMs:650, fallMs:2200 }
+    ],
     hazards: [],
     launchPads: [],
+    platformItems: [
+      { id:'pf1', x:-40, y:470, w:22, h:22 }
+    ],
 
     gates: [
       {
         id: 'g_final',
+        batteryId: 'bat1',
+        batterySlot: { x:40, y:560, w:26, h:34 },
         plateA: { x:1500, y:340, w:34, h:10 },
         plateB: { x:1660, y:340, w:34, h:10 },
         gateX: 1820
