@@ -1,7 +1,7 @@
 {
-  "name": "정거장 605",
-  "short_name": "정거장 605",
-  "description": "정거장 605 — 협동 탈출 플랫포머",
+  "name": "Station 605",
+  "short_name": "Station 605",
+  "description": "Station 605 — 협동 탈출 플랫포머",
   "start_url": "./index.html",
   "scope": ".",
   "display": "standalone",
