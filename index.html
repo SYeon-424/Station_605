@@ -324,13 +324,13 @@ const LEVELS = [
   },
   { // STAGE 2 - 배터리를 더 멀리 왕복 + 움직이는 발판 타이밍
     width: 950, height: 400,
-    grounds: [ {x:0,y:340,w:170,h:60}, {x:430,y:340,w:110,h:60}, {x:700,y:340,w:250,h:60} ],
+    grounds: [ {x:0,y:340,w:170,h:60}, {x:430,y:340,w:110,h:60}, {x:700,y:340,w:250,h:60}, {x:520,y:500,w:300,h:60}],
     bridges: [
       { id:'b1', rect:{x:170,y:340,w:260,h:20}, mode:'hold',
         switchPads:[ {x:60,y:320,w:50,h:10}, {x:440,y:320,w:50,h:10} ] }
     ],
     batteries: [ { id:'bat1', x:780, y:300, w:22, h:26 } ],
-    movingPlatforms: [ {x0:550,y0:340,x1:650,y1:340,w:60,h:15,period:2200} ],
+    movingPlatforms: [],
     crumbles: [], hazards: [], launchPads: [],
     gates: [
       { id:'g1', batteryId:'bat1', batterySlot:{x:460,y:258,w:26,h:34},
