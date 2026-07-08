@@ -24,7 +24,10 @@
     --openclr:#4ade80; --openclr-dim:#2f6b47;
   }
   *{box-sizing:border-box;}
-  html,body{margin:0;padding:0;background:var(--bg);color:var(--white);font-family:'IBM Plex Mono',monospace;min-height:100%;}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--white);font-family:'IBM Plex Mono',monospace;min-height:100%;
+    -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; -webkit-tap-highlight-color:transparent;}
+  img, canvas, button, .top-bar, .mobile-controls, .oxy-wrap, .sf-panel{ -webkit-user-drag:none; }
+  input, textarea{ -webkit-user-select:text; user-select:text; }
   #app{position:relative;max-width:860px;margin:0 auto;padding:24px 16px 50px;}
   h1,h2,h3{font-family:'Share Tech Mono',monospace;letter-spacing:0.5px;margin:0;}
   .glow{color:var(--green);text-shadow:0 0 6px rgba(74,168,255,0.5);}
@@ -695,6 +698,13 @@ function renderLogin(){
     const existing = snap.val();
     if(existing && existing.gameStarted && !existing.dead && !existing.won){
       alert("이 방은 이미 게임이 진행 중입니다. 게임이 끝난 뒤 다시 시도해주세요.");
+      return;
+    }
+
+    const playersSnap = await db.ref(`rooms605/${roomCode}/players`).once('value');
+    const existingPlayers = playersSnap.val() || {};
+    if(existingPlayers[n]){
+      alert("이미 같은 닉네임을 사용 중인 사람이 방에 있습니다. 다른 닉네임을 입력해주세요.");
       return;
     }
 
@@ -2093,6 +2103,21 @@ async function leaveRoom(){
   renderLogin();
 }
 
+// Firebase의 onDisconnect()는 서버가 연결 끊김을 감지할 때까지 시간이 걸릴 수 있음
+// (새로고침/앱 종료 등 "깔끔한" 이탈에도 몇 초씩 걸리는 경우가 있음). 그래서
+// pagehide/beforeunload 시점에 내 자리를 미리 지워서 다른 사람 화면에 더 빨리
+// (거의 즉시) 반영되게 한다 — onDisconnect()는 이 프로액티브 정리가 실패했을 때를
+// 대비한 안전망으로 계속 등록해둔 채로 둔다.
+function setupUnloadCleanup(){
+  const cleanup = ()=>{
+    if(myPlayerRef){
+      try{ myPlayerRef.remove(); }catch(e){}
+    }
+  };
+  window.addEventListener('pagehide', cleanup);
+  window.addEventListener('beforeunload', cleanup);
+}
+
 function setupKeys(){
   window.addEventListener('keydown', e=>{
     if(e.code === 'KeyR' && gamePhase === 'briefing'){ toggleMyReady(); return; }
@@ -2107,6 +2132,7 @@ function initGame(){
   renderBriefing();
   setupKeys();
   setupRealtime();
+  setupUnloadCleanup();
 }
 
 const bgmEl = document.getElementById('bgm');
