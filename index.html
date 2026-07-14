@@ -1215,10 +1215,10 @@ function stepPhysics(bridgeStates, t, dt, inverted){
   for(const s of solids){
     if(rectsOverlap(b,s)){
       if(p.vy > 0){
-        if(!wasOnGround && p.vy > 3){ landingSquash = Math.min(1, p.vy / 14); spawnLandingBurst(p.x, s.y, '#4aa8ff', landingSquash); }
+        if(!wasOnGround && p.vy > 3){ landingSquash = Math.min(1, p.vy / 14); spawnLandingBurst(p.x, s.y, '#4aa8ff', landingSquash, inverted); }
         p.y = s.y - PH/2; p.onGround = true; p.vy = 0; if(s.__mpIndex !== undefined) lastLandedMpIndex = s.__mpIndex;
       } else if(p.vy < 0){
-        if(!wasOnGround && p.vy < -3){ landingSquash = Math.min(1, -p.vy / 14); spawnLandingBurst(p.x, s.y+s.h, '#4aa8ff', landingSquash); }
+        if(!wasOnGround && p.vy < -3){ landingSquash = Math.min(1, -p.vy / 14); spawnLandingBurst(p.x, s.y+s.h, '#4aa8ff', landingSquash, inverted); }
         p.y = s.y + s.h + PH/2; p.onGround = true; p.vy = 0; if(s.__mpIndex !== undefined) lastLandedMpIndex = s.__mpIndex;
       }
       b = box();
@@ -1254,31 +1254,33 @@ const PIXEL_SIZES = [3, 4, 5, 6];
 const DISSOLVE_FLASH_MS = 220;
 const DISSOLVE_TOTAL_MS = 700;
 
-function spawnTrailParticle(x, y, colorHex){
+function spawnTrailParticle(x, y, colorHex, inverted){
   if(particles.length > 220) particles.splice(0, particles.length - 220);
+  const dir = inverted ? -1 : 1;
   const grid = 2;
   particles.push({
     x: Math.round((x + (Math.random()-0.5)*8) / grid) * grid,
-    y: Math.round((y - 2 + (Math.random()-0.5)*5) / grid) * grid,
+    y: Math.round((y - 2*dir + (Math.random()-0.5)*5) / grid) * grid,
     vx: (Math.random()-0.5)*0.5,
-    vy: -0.12 - Math.random()*0.18,
+    vy: (-0.12 - Math.random()*0.18) * dir,
     life: 1,
     decay: 0.022 + Math.random()*0.018,
     size: PIXEL_SIZES[Math.floor(Math.random()*PIXEL_SIZES.length)],
     color: colorHex
   });
 }
-function spawnLandingBurst(x, y, colorHex, intensity){
+function spawnLandingBurst(x, y, colorHex, intensity, inverted){
   intensity = Math.max(0.15, Math.min(1, intensity));
+  const dir = inverted ? -1 : 1;
   const count = 5 + Math.round(intensity * 5);
   for(let i = 0; i < count; i++){
-    const dir = i % 2 === 0 ? 1 : -1;
+    const hdir = i % 2 === 0 ? 1 : -1;
     const spread = 0.3 + Math.random()*0.5;
     particles.push({
-      x: x + dir * (2 + Math.random()*2),
-      y: y - 1,
-      vx: dir * spread * (0.5 + intensity * 0.6),
-      vy: -0.15 - Math.random() * 0.25 * intensity,
+      x: x + hdir * (2 + Math.random()*2),
+      y: y - 1*dir,
+      vx: hdir * spread * (0.5 + intensity * 0.6),
+      vy: (-0.15 - Math.random() * 0.25 * intensity) * dir,
       life: 1,
       decay: 0.06 + Math.random()*0.03,
       size: PIXEL_SIZES[Math.floor(Math.random()*PIXEL_SIZES.length)],
@@ -1370,7 +1372,7 @@ function updateRemoteSquash(remotePositions, solids, dt, inversionMap){
       if(Math.abs(prevVy) > 2){
         remoteSquash[name] = Math.min(1, Math.abs(prevVy) / 14);
         const contactY = inverted ? pos.y - PH/2 : pos.y + PH/2;
-        spawnLandingBurst(pos.x, contactY, '#facc15', remoteSquash[name]);
+        spawnLandingBurst(pos.x, contactY, '#facc15', remoteSquash[name], inverted);
       }
     }
     remoteWasGrounded[name] = grounded;
@@ -1388,7 +1390,10 @@ function drawPlayer(cx,cy,color,label,squash,inverted){
   inverted = !!inverted;
   const w = PW * (1 + squash * 0.35);
   const h = PH * (1 - squash * 0.28);
-  const top = cy - h/2;
+  // 찌그러질 때 접지면(발이 닿는 쪽)이 고정되도록 앵커를 반전 여부에 따라 다르게 잡는다.
+  // 반전 상태(천장에 매달림)면 캐릭터의 윗변(천장쪽)이 고정되고 아랫부분이 짜부라지고,
+  // 정상 상태면 아랫변(바닥쪽)이 고정되고 윗부분이 짜부라진다.
+  const top = inverted ? (cy - PH/2) : (cy + PH/2 - h);
   ctx.save();
   ctx.fillStyle = color; ctx.shadowColor = color; ctx.shadowBlur = 8;
   ctx.fillRect(cx-w/2, top, w, h);
@@ -1613,9 +1618,9 @@ function drawLevel(remotePositions, bridgeStates, t, dt){
     remoteInv[name] = computeInversion(name, allPosForInv);
   });
 
-  if(Math.random() < 0.75) spawnTrailParticle(myPlayer.x, myPlayer.y + (myInv ? -PH/2 : PH/2), '#4aa8ff');
+  if(Math.random() < 0.75) spawnTrailParticle(myPlayer.x, myPlayer.y + (myInv ? -PH/2 : PH/2), '#4aa8ff', myInv);
   Object.entries(remotePositions).forEach(([name,pos])=>{
-    if(Math.random() < 0.75) spawnTrailParticle(pos.x, pos.y + (remoteInv[name] ? -PH/2 : PH/2), '#facc15');
+    if(Math.random() < 0.75) spawnTrailParticle(pos.x, pos.y + (remoteInv[name] ? -PH/2 : PH/2), '#facc15', remoteInv[name]);
   });
   updateAndDrawParticles(dt || 1);
   updateAndDrawDissolves(t);
