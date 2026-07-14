@@ -161,9 +161,6 @@
     .status-pill{ font-size:10px; }
   }
 
-  /* 광고 배너 자리 — 실제 수익화하려면 애드센스 등에서 발급받은 스크립트 코드를
-     #adBannerSlot 안에 넣으면 됩니다. 데스크탑은 하단 고정, 모바일은 하단 조작
-     버튼과 겹치므로 상단으로 옮기고 그만큼 본문을 아래로 밀어냅니다. */
   #adBanner{
     position:fixed; left:0; right:0; bottom:0; z-index:35;
     background:#0e131b; border-top:1px solid var(--line);
@@ -385,7 +382,6 @@ let posSendTimer = null;
 let keys = new Set();
 let lastRemoteSnapshots = {};
 let onlineNames = new Set();
-// 나간 사람의 마지막 위치에서 재생되는 "빨갛게 변했다가 픽셀로 흩어지는" 연출 상태.
 let dissolvingPlayers = {};
 let realtimeRefs = {};
 let myPlayerRef = null;
@@ -408,9 +404,6 @@ const START_POS = {x:40,y:290};
 function startPos(){ return L().start || START_POS; }
 function killY(){ return (L().height || 400) + 40; }
 
-// 문(게이트) 색상 규칙 — 모든 스테이지 공통
-//  - 배터리가 필요 없는 문: 평소 amber, 열리면 green
-//  - 배터리가 필요한 문: 방전(회색) → 배터리 장착(빨강) → 두 명 압력판 → 개방(초록)
 const GATE_COLORS = {
   open:      '#4ade80',
   charged:   '#e34848',
@@ -423,7 +416,6 @@ const GATE_WALL_FILL = {
   uncharged: 'rgba(138,152,168,0.20)',
   locked:    'rgba(227,72,72,0.22)'
 };
-// 게이트가 요구하는 배터리 id 목록 (단수형 batteryId / 복수형 batteryIds 둘 다 지원)
 function gateRequiredBatteryIds(g){
   if(g.batteryIds) return g.batteryIds;
   if(g.batteryId) return [g.batteryId];
@@ -444,13 +436,8 @@ function gateColorState(g){
   return 'locked';
 }
 
-// 발판 아이템 (신규 기믹): 아이템을 밟아서 "충전" 상태가 되면, 그다음 점프하는 순간
-// 바로 그 위치(발밑)에 3초짜리 임시 발판이 생긴다. 발판이 사라지는 동시에 원래
-// 자리에 아이템이 다시 나타난다. 한 사람이 동시에 여러 개를 충전해 들고 있을 순 없다.
 const PLATFORM_ITEM_DURATION_MS = 3000;
 const PLATFORM_SPAWN_W = 70, PLATFORM_SPAWN_H = 16;
-// 발판이 정확히 "발밑"이면 앞으로 계속 이동하며 내려올 때 아슬아슬하게 스칠 수 있어서,
-// 진행 방향(정상 중력이면 아래쪽, 반전 중이면 천장쪽) 으로 살짝 더 여유를 준다.
 const PLATFORM_SPAWN_Y_MARGIN = 18;
 function platformItemAvailable(item, t){
   const held = roomRowState.platformCharge && roomRowState.platformCharge[item.id];
@@ -461,7 +448,7 @@ function platformItemAvailable(item, t){
 }
 
 const LEVELS = [
-  { // STAGE 1 - 605 워밍업: 릴레이 브릿지 + 배터리로 문 충전 + 게이트
+  {
     width: 850, height: 400,
     grounds: [ {x:0,y:340,w:220,h:60}, {x:480,y:340,w:370,h:60} ],
     bridges: [
@@ -475,7 +462,7 @@ const LEVELS = [
         plateA:{x:700,y:320,w:34,h:10}, plateB:{x:790,y:320,w:34,h:10}, gateX:840 }
     ]
   },
-  { // STAGE 2 - 배터리를 더 멀리 왕복 + 움직이는 발판 타이밍
+  {
     width: 950, height: 400,
     grounds: [ {x:0,y:340,w:170,h:60}, {x:430,y:340,w:110,h:60}, {x:700,y:340,w:250,h:60}, {x:520,y:180,w:210,h:60}],
     bridges: [
@@ -490,17 +477,14 @@ const LEVELS = [
         plateA:{x:760,y:320,w:34,h:10}, plateB:{x:860,y:320,w:34,h:10}, gateX:920 }
     ]
   },
-  { // STAGE 3 - 중력 반전 릴레이: 발판을 밟으면 "상대방" 중력이 반전되어 천장을 걸음
-    // 절벽(180~600 사이 빈 공간) 한중간에 배터리가 떠 있어서, 건너가던 사람을
-    // 잠깐 정상 중력으로 풀어줬다가(떨어지며 배터리 획득) 바닥에 닿기 전에
-    // 다시 반전시켜 천장으로 돌려보내는 타이밍 플레이가 필요함.
+  {
     width: 900, height: 420, start:{x:40,y:300},
     grounds: [
       {x:0,   y:340, w:180, h:80},
       {x:600, y:340, w:300, h:80}
     ],
     ceilings: [
-      {x:0, y:0, w:900, h:60} // 천장 뒤가 완전히 막혀 있어서 반전 중 절대 뚫고 올라갈 수 없음
+      {x:0, y:0, w:900, h:60}
     ],
     gravityPads: [
       { id:'gp1', rect:{x:60,  y:320, w:60, h:10} },
@@ -513,14 +497,12 @@ const LEVELS = [
         plateA:{x:640,y:320,w:34,h:10}, plateB:{x:820,y:320,w:34,h:10}, gateX:880 }
     ]
   },
-  { // STAGE 4 - 배터리 원정: 시작 지점 근처에 슬롯이 있고, 배터리는 계단 끝 저 높은 곳에 있다.
-    // 둘이 함께 발사대를 밟아 사라지는 발판 두 개를 릴레이로 밟고 올라가 배터리를 챙긴 뒤,
-    // 다시 시작 지점까지 들고 내려와 슬롯에 넣어야 최종 문의 압력판이 활성화된다.
+  {
     width: 1100, height: 550, start:{x:50,y:170},
     grounds: [
-      {x:0,   y:190, w:210, h:80},   // 좌상단 시작 발판 (배터리 슬롯이 바로 위에 떠 있음)
-      {x:815, y:270, w:265, h:90},   // 우상단 발판 (배터리 + 최종 게이트 구간) — 높이 낮춤
-      {x:0,   y:490, w:1100, h:60}   // 맨 아래 바닥
+      {x:0,   y:190, w:210, h:80},
+      {x:815, y:270, w:265, h:90},
+      {x:0,   y:490, w:1100, h:60}
     ],
     batteries: [ { id:'bat1', x:955, y:244, w:22, h:26 } ],
     bridges: [],
@@ -531,40 +513,28 @@ const LEVELS = [
     ],
     hazards: [],
     launchPads: [
-      { id:'lp1', padA:{x:230,y:470,w:34,h:10}, padB:{x:280,y:470,w:34,h:10}, boost:-25 } // 더 왼쪽 + 더 높이
+      { id:'lp1', padA:{x:230,y:470,w:34,h:10}, padB:{x:280,y:470,w:34,h:10}, boost:-25 }
     ],
     gates: [
       { id:'g_final', batteryId:'bat1', batterySlot:{x:60,y:110,w:26,h:34},
         plateA:{x:40,y:170,w:44,h:10}, plateB:{x:900,y:470,w:44,h:10}, gateX:1015 }
     ]
   },
-  { // STAGE 5 - 중력 반전 + 수직 엘리베이터 + 배터리 2개: 시작쪽엔 천장이 없고,
-    // 엘리베이터(수직 이동 발판)를 타고 올라가면 도착지 위쪽에 걸쳐 있는 천장에 닿는다.
-    // 꼭대기 근처에서 반전시키면 엘리베이터에서 천장으로 옮겨 붙고, 도착지 위까지
-    // 걸어간 뒤 다시 반전을 풀면 아래로 떨어져 착지한다. 좌우로 움직이는 발판을 정확한
-    // 타이밍에 맞춰 잡아야 하는 방식보다 훨씬 여유롭다 (엘리베이터는 그냥 타면 되고,
-    // 반전 타이밍도 천장이 널찍해서 살짝 빗나가도 괜찮음).
-    // 배터리 2개는 한 사람이 동시에 못 들기 때문에, 매번 이 절차를 새로 반복해야 한다.
-    //  1) A가 배터리1을 들고 엘리베이터에 탐 → 위로 올라감
-    //  2) 꼭대기 근처에 다다르면 B가 gp1을 밟아 A를 반전 → 엘리베이터에서 도착지 위 천장으로 옮겨 붙음
-    //  3) A가 천장을 걸어서 도착지 바닥 위까지 이동
-    //  4) B가 gp1에서 내려오면 A가 정상 중력으로 돌아와 떨어져서 착지 → 슬롯1에 배터리1 전달
-    //  5) B가 시작쪽에 남은 배터리2를 들고 같은 절차를 반복 (이번엔 건너편에 있는 A가 gp2로 B를 반전시켜줌)
-    //  6) 둘 다 도착지에서 A/B 압력판을 동시에 밟아 문 개방
+  {
     width: 1040, height: 460, start:{x:40,y:300},
     grounds: [
       {x:0,   y:340, w:220, h:120},
       {x:700, y:340, w:340, h:120}
     ],
     ceilings: [
-      {x:300, y:60, w:740, h:40} // 엘리베이터 꼭대기 근처부터 도착지 바닥 위까지 쭉 이어진 천장
+      {x:300, y:60, w:740, h:40}
     ],
     gravityPads: [
       { id:'gp1', rect:{x:60,  y:320, w:60, h:10} },
       { id:'gp2', rect:{x:840, y:320, w:60, h:10} }
     ],
     movingPlatforms: [
-      { x0:310, y0:335, x1:310, y1:140, w:70, h:15, period:3600 } // 수직 엘리베이터
+      { x0:310, y0:335, x1:310, y1:140, w:70, h:15, period:3600 }
     ],
     batteries: [
       { id:'bat1', x:80,  y:270, w:22, h:26 },
@@ -578,36 +548,21 @@ const LEVELS = [
         plateA:{x:920,y:320,w:34,h:10}, plateB:{x:965,y:320,w:34,h:10}, gateX:1010 }
     ]
   },
-  { // STAGE 6 - 궁극의 협동 관문: 706의 기믹(크럼블/무빙 플랫폼/화염 함정/홀드 브릿지)과
-    // 605의 기믹(배터리/중력 반전)을 전부 한 줄로 엮은 최종 시련.
-    // 구간별 진행:
-    //  1) 크럼블 다리를 건너 배터리를 획득한다.
-    //  2) 무빙 플랫폼으로 틈을 건넌 뒤, 착지하자마자 주기적으로 타오르는 화염 함정을
-    //     타이밍 맞춰 통과한다.
-    //  3) 한 명이 스위치 압력판을 밟아 다리를 유지하는 동안, 배터리를 든 다른 한 명이
-    //     다리를 건넌다.
-    //  4) (완전히 새로운 조합) 이 구간 위쪽엔 배터리 슬롯이 "천장"에 박혀 있다.
-    //     A가 배터리를 든 채 발사 지점 발판 위(천장이 시작되는 지점)에 서면,
-    //     B가 gp1을 밟아 A를 반전시킨다 → A가 천장에 붙어 걸어가며 배터리를
-    //     천장 슬롯에 장착하고 계속 걸어가 도착 발판 위쪽까지 이동한다.
-    //  5) A가 도착 발판(E) 위쪽에 다다르면, B는 gp1에서 내려온다 → A는 정상
-    //     중력으로 돌아와 떨어져 E에 착지한다. 이제 이번엔 A가 E 위의 gp2를 밟아
-    //     (아직 D에 남아있는) B를 반전시켜준다 — B도 천장을 걸어 건너온다.
-    //  6) 둘 다 E에 모이면 마지막 압력판을 함께 밟아 탈출.
+  {
     width: 1780, height: 620, start:{x:40,y:510},
     grounds: [
-      {x:0,    y:560, w:190, h:60},  // A: 시작
-      {x:460,  y:560, w:220, h:60},  // B: 배터리 발판
-      {x:830,  y:560, w:320, h:60},  // C: 화염 + 브릿지 스위치 구간
-      {x:1290, y:560, w:110, h:60},  // D: 반전 계전 발사 지점
-      {x:1540, y:560, w:220, h:60}   // E: 최종 도착 + 게이트
+      {x:0,    y:560, w:190, h:60},
+      {x:460,  y:560, w:220, h:60},
+      {x:830,  y:560, w:320, h:60},
+      {x:1290, y:560, w:110, h:60},
+      {x:1540, y:560, w:220, h:60}
     ],
     ceilings: [
-      {x:1330, y:60, w:380, h:40} // D 오른쪽 끝부터 E 전체 위까지 이어진 천장 (반전 계전 전용)
+      {x:1330, y:60, w:380, h:40}
     ],
     gravityPads: [
-      { id:'gp1', rect:{x:1310, y:540, w:60, h:10} }, // D 위 — B가 밟아서 A(배터리 소지자)를 반전
-      { id:'gp2', rect:{x:1560, y:540, w:60, h:10} }  // E 위 — A가 밟아서 D에 남은 B를 반전
+      { id:'gp1', rect:{x:1310, y:540, w:60, h:10} },
+      { id:'gp2', rect:{x:1560, y:540, w:60, h:10} }
     ],
     batteries: [ { id:'bat1', x:500, y:520, w:22, h:26 } ],
     bridges: [
@@ -631,145 +586,101 @@ const LEVELS = [
         plateA:{x:1600,y:540,w:34,h:10}, plateB:{x:1650,y:540,w:34,h:10}, gateX:1700 }
     ]
   },
-  { // STAGE 7 - 이중 배터리 왕복 정비: 여기서부터 배터리는 무조건 2개(각각 다른 문을 엶),
-    // 좌우/상하 왕복 셔틀도 대폭 늘림.
-    // 진행 순서:
-    //  1) 시작 지점에서 배터리 하나를 든다 (한 번에 하나만 들 수 있음).
-    //  2) 좌우로 왕복하는 셔틀 발판을 타고 첫 번째 틈을 건넌다.
-    //  3) 위아래로 왕복하는 엘리베이터를 타고 위층으로 올라간다.
-    //  4) 위층(G2)에 도착하면 bat1을 바로 그 자리의 슬롯에 장착하고, 동료와 함께
-    //     압력판을 밟아 첫 번째 문(g_mid)을 연다.
-    //  5) 발판 아이템을 챙긴 뒤 갭 쪽으로 점프한다 — 정점에서 발판이 생겨 그 위에
-    //     착지하고, 거기서 한 번 더 점프해 맞은편(g_mid를 지나 열린 쪽) 구역으로 건너간다.
-    //  6) 화염 함정을 피해 최종 발판으로 진입, bat2를 슬롯에 장착하고 마지막 압력판을
-    //     함께 밟아 g_final을 연다.
-    //  7) 배터리가 하나뿐이므로 각 문마다 위 과정을 필요한 만큼 왕복한다.
+  {
     width: 1400, height: 700, start:{x:40,y:590},
     grounds: [
-      {x:0,    y:640, w:220, h:60},  // G0: 시작 (배터리 2개)
-      {x:540,  y:640, w:160, h:60},  // G1: 좌우 셔틀 도착
-      {x:520,  y:320, w:220, h:60},  // G2: 엘리베이터 도착 + 발판 아이템 + g_mid 슬롯/압력판
-      {x:920,  y:320, w:430, h:60}   // G3: g_mid 벽 통과 지점 + 화염 함정 + g_final
+      {x:0,    y:640, w:220, h:60},
+      {x:540,  y:640, w:160, h:60},
+      {x:520,  y:320, w:220, h:60},
+      {x:920,  y:320, w:430, h:60}
     ],
     bridges: [], crumbles: [],
     movingPlatforms: [
-      { x0:250, y0:640, x1:470, y1:640, w:70, h:15, period:2600 }, // 좌우 셔틀
-      { x0:650, y0:620, x1:650, y1:320, w:70, h:15, period:3200 }  // 상하 엘리베이터 (시작점이 바닥보다 살짝 위)
+      { x0:250, y0:640, x1:470, y1:640, w:70, h:15, period:2600 },
+      { x0:650, y0:620, x1:650, y1:320, w:70, h:15, period:3200 }
     ],
     hazards: [
-      { id:'h1', rect:{x:1000,y:260,w:60,h:60}, period:1400, activeFraction:0.4 } // g_mid를 지나자마자 나오는 화염 함정
+      { id:'h1', rect:{x:1000,y:260,w:60,h:60}, period:1400, activeFraction:0.4 }
     ],
     launchPads: [],
     batteries: [
-      { id:'bat1', x:50,  y:600, w:22, h:26 }, // g_mid용
-      { id:'bat2', x:120, y:600, w:22, h:26 }  // g_final용
+      { id:'bat1', x:50,  y:600, w:22, h:26 },
+      { id:'bat2', x:120, y:600, w:22, h:26 }
     ],
     platformItems: [
       { id:'pf1', x:560, y:280, w:22, h:22 }
     ],
     gates: [
-      { id:'g_mid', batteryId:'bat1', batterySlot:{x:420,y:190,w:26,h:34}, // G2 바닥 범위(520~740) 밖 왼쪽 허공, 더 높이
-        plateA:{x:660,y:190,w:34,h:10}, plateB:{x:700,y:190,w:34,h:10}, // 점프만으로는 못 닿는 높이 + g_final과 같은 두께
+      { id:'g_mid', batteryId:'bat1', batterySlot:{x:420,y:190,w:26,h:34},
+        plateA:{x:660,y:190,w:34,h:10}, plateB:{x:700,y:190,w:34,h:10},
         gateX:960 },
       { id:'g_final', batteryId:'bat2', batterySlot:{x:1140,y:280,w:26,h:34},
         plateA:{x:1200,y:300,w:34,h:10}, plateB:{x:1250,y:300,w:34,h:10}, gateX:1310 }
     ]
   },
-  { // STAGE 8 - 문이 무조건 2개(각각 배터리 하나씩).
-    // 진행 순서 (왼쪽부터):
-    //  1) 바닥1: 배터리 2개(세로로 쌓임) + 노란 홀드 브릿지 스위치.
-    //  2) 낭떠러지 — 홀드 브릿지로 건넘 (한 명이 스위치를 계속 밟고 있어야 함).
-    //  3) 바닥2: 반대편 브릿지 스위치.
-    //  4) 낭떠러지 — 좌우로 왕복하는 셔틀 발판으로 건넘.
-    //  5) 바닥3(아래층): 왼쪽 끝에 발판 아이템 2개가 계단식으로 떠 있다. 순서대로 먹고
-    //     점프하면 훨씬 위쪽의 바닥3(위층)에 닿을 수 있다.
-    //  6) 바닥3(위층): 왼쪽부터 순서대로 배터리 슬롯(bat1) → 문여는 압력판 2개 →
-    //     중력 반전 패드 → gate1 벽. bat1을 슬롯에 넣고 압력판을 함께 밟아 gate1을 연다.
-    //  7) gate1을 지나면 바로 낭떠러지 — 다시 바닥3(아래층) 높이로 떨어진다.
-    //     거기(gate1 바로 뒤)에 점프 압력판(발사대)이 있다. 발사대로 뛰어오르면 솟아있는
-    //     발판 위에 착지한다 — 거기서 다시 점프해서 진짜 낭떠러지를 건너야 바닥4다.
-    //  8) 바닥4에는 gate2의 문여는 압력판 2개가 있다.
-    //  9) gate2의 배터리 슬롯은 훨씬 위쪽, 천장에 박혀 있어 점프로는 절대 안 닿는다 —
-    //     바닥3(위층)의 중력 반전 패드를 다시 사용: 헬퍼가 패드를 밟아 bat2를 든 동료를
-    //     반전시키면, 그 동료가 천장에 붙어 저 멀리 오른쪽 끝 슬롯까지 걸어가 배터리를
-    //     넣는다. 패드에서 내려오면 바닥4 위로 떨어진다.
-    //  10) 두 문이 모두 열리면 함께 압력판을 밟아 탈출.
+  {
     width: 1980, height: 680, start:{x:40,y:510},
     grounds: [
-      {x:0,    y:560, w:220, h:60},  // 바닥1: 시작 (배터리 2개 + 브릿지 스위치)
-      {x:360,  y:560, w:160, h:60},  // 바닥2: 홀드 브릿지 건넌 뒤 착지 (반대편 스위치)
-      {x:740,  y:560, w:260, h:60},  // 바닥3(아래층): 좌우 셔틀 착지 + 발판 아이템 계단
-      {x:820,  y:300, w:380, h:60},  // 바닥3(위층): gate1 슬롯/압력판/중력패드/벽
-      {x:1200, y:560, w:160, h:60},  // 바닥3(아래층, 이어짐): 발사대
-      {x:1360, y:400, w:110, h:220}, // 발사대로 뛰어올라 착지하는 발판 (벽처럼 솟아있음)
-      // x:1470~1540 사이는 진짜 낭떠러지 — 착지 발판 위에서 다시 점프해서 건너야 함
-      {x:1540, y:560, w:390, h:60}   // 바닥4: 낭떠러지 건넌 착지 지점 + gate2 압력판
+      {x:0,    y:560, w:220, h:60},
+      {x:360,  y:560, w:160, h:60},
+      {x:740,  y:560, w:260, h:60},
+      {x:820,  y:300, w:380, h:60},
+      {x:1200, y:560, w:160, h:60},
+      {x:1360, y:400, w:110, h:220},
+      {x:1540, y:560, w:390, h:60}
     ],
     ceilings: [
-      {x:1000, y:40, w:920, h:40} // 바닥3(위층) 중력패드 위쪽부터 바닥4 오른쪽 끝까지 쭉 이어진 천장 (더 높게)
+      {x:1000, y:40, w:920, h:40}
     ],
     gravityPads: [
-      { id:'gp1', rect:{x:1050, y:280, w:60, h:10} } // 바닥3(위층) — 헬퍼가 밟아서 배터리 소지자를 반전
+      { id:'gp1', rect:{x:1050, y:280, w:60, h:10} }
     ],
     bridges: [
       { id:'b1', rect:{x:220,y:560,w:140,h:20}, mode:'hold',
         switchPads:[ {x:130,y:540,w:56,h:10}, {x:400,y:540,w:56,h:10} ] }
     ],
     movingPlatforms: [
-      { x0:570, y0:560, x1:670, y1:560, w:70, h:15, period:2600 } // 좌우 셔틀
+      { x0:570, y0:560, x1:670, y1:560, w:70, h:15, period:2600 }
     ],
     crumbles: [],
     hazards: [],
     launchPads: [
-      { id:'lp1', padA:{x:1240,y:540,w:34,h:10}, padB:{x:1290,y:540,w:34,h:10}, boost:-20 } // 벽을 넘기 위한 발사대
+      { id:'lp1', padA:{x:1240,y:540,w:34,h:10}, padB:{x:1290,y:540,w:34,h:10}, boost:-20 }
     ],
     batteries: [
-      { id:'bat1', x:50, y:480, w:22, h:26 }, // 세로로 쌓인 배터리 중 아래
-      { id:'bat2', x:50, y:440, w:22, h:26 }  // 세로로 쌓인 배터리 중 위
+      { id:'bat1', x:50, y:480, w:22, h:26 },
+      { id:'bat2', x:50, y:440, w:22, h:26 }
     ],
     platformItems: [
-      { id:'pf1', x:770, y:520, w:22, h:22 }, // 바닥3(아래층) 왼쪽 끝, 첫 번째 계단
-      { id:'pf2', x:770, y:410, w:22, h:22 }, // 두 번째 계단
-      { id:'pf3', x:770, y:300, w:22, h:22 }  // 세 번째 계단 — 여기까지 오르면 위층에 닿는다
+      { id:'pf1', x:770, y:520, w:22, h:22 },
+      { id:'pf2', x:770, y:410, w:22, h:22 },
+      { id:'pf3', x:770, y:300, w:22, h:22 }
     ],
     gates: [
       { id:'gate1', batteryId:'bat1', batterySlot:{x:850,y:260,w:26,h:34},
         plateA:{x:920,y:280,w:34,h:10}, plateB:{x:970,y:280,w:34,h:10}, gateX:1180 },
-      { id:'gate2', batteryId:'bat2', batterySlot:{x:1840,y:80,w:26,h:34}, // 천장에 박힌 슬롯 (문 벽이랑 안 겹치게 왼쪽으로)
+      { id:'gate2', batteryId:'bat2', batterySlot:{x:1840,y:80,w:26,h:34},
         plateA:{x:1700,y:540,w:34,h:10}, plateB:{x:1750,y:540,w:34,h:10}, gateX:1880 }
     ]
   },
-  { // STAGE 9
+  {
     width: 1600, height: 700,
     start: { x:40, y:580 },
 
     grounds: [
-      // 시작 바닥
       { x:0,    y:620, w:240, h:60 },
-
-      // F자 세로 기둥
       { x:180,  y:280, w:60,  h:340 },
-
-      // F자 윗가로
       { x:180,  y:280, w:310, h:60 },
-
-      // F자 가운데 가로
       { x:180,  y:440, w:310, h:60 },
-
-      // 위쪽 긴 발판
       { x:460,  y:40,  w:400, h:60 },
-
-      // 아래 작은 발판
       { x:730,  y:610, w:100, h:50 },
       { x:900, y:610, w:230, h:50 },
-
-      // 오른쪽 공중 발판
       { x:1100, y:360, w:450, h:50 }
     ],
 
     bridges: [],
     movingPlatforms: [
-      { x0:500, y0:280, x1:680, y1:280, w:70, h:15, period:2600 } // 좌우 셔틀
+      { x0:500, y0:280, x1:680, y1:280, w:70, h:15, period:2600 }
     ],
     crumbles: [
       { id:'c1', rect:{x:100, y:430, w:70, h:18}, warnMs:650, fallMs:2200 },
@@ -778,22 +689,22 @@ const LEVELS = [
     ],
     hazards: [],
     launchPads: [
-      { id:'lp1', padA:{x:1000,y:590,w:34,h:10}, padB:{x:1040,y:590,w:34,h:10}, boost:-25 } // 아래 작은 발판(오른쪽) 위 점프 발판
+      { id:'lp1', padA:{x:1000,y:590,w:34,h:10}, padB:{x:1040,y:590,w:34,h:10}, boost:-25 }
     ],
     platformItems: [
-      { id:'pf1', x:1150, y:320, w:22, h:22 }, // 오른쪽 공중 발판 위 왼쪽
+      { id:'pf1', x:1150, y:320, w:22, h:22 },
       { id:'pf2', x:1400, y:320, w:22, h:22 }
     ],
     gravityPads: [
-      { id:'gp1', rect:{x:280, y:420, w:60, h:10} } // F자 가운데 가로 위
+      { id:'gp1', rect:{x:280, y:420, w:60, h:10} }
     ],
     batteries: [
-      { id:'bat1', x:790,  y:110, w:22, h:26 }, // 위쪽 긴 발판 바로 아래
-      { id:'bat2', x:1480, y:420, w:22, h:26 }  // 오른쪽 공중 발판 바로 아래
+      { id:'bat1', x:790,  y:110, w:22, h:26 },
+      { id:'bat2', x:1480, y:420, w:22, h:26 }
     ],
 
     gates: [
-      { // 시작 슬롯 문 — bat1
+      {
         id: 'g_final',
         batteryId: 'bat1',
         batterySlot: { x:40, y:560, w:26, h:34 },
@@ -801,7 +712,7 @@ const LEVELS = [
         plateB: { x:780, y:590, w:34, h:10 },
         gateX: 820
       },
-      { // 에라이 씨
+      {
         id: 'gate2',
         batteryId: 'bat2',
         batterySlot: { x:1250, y:150, w:26, h:34 },
@@ -821,8 +732,12 @@ let lastSeenLaunchTs = {};
 let riddenMpIndex = null;
 let riddenMpPrevRect = null;
 let lastLandedMpIndex = null;
-let landingSquash = 0; // 0~1, decays each frame; used for a brief squash/stretch on hard landings
+let landingSquash = 0;
 let particles = [];
+let remoteSquash = {};
+let remotePrevY = {};
+let remotePrevVy = {};
+let remoteWasGrounded = {};
 function L(){ return LEVELS[currentLevel]; }
 
 function getMovingPlatformRect(mp, t){
@@ -853,8 +768,6 @@ function hazardActive(hz, t){
   return phase < hz.activeFraction;
 }
 
-// 중력 반전: gravityPads 중 하나라도 "나 자신이 아닌 다른 플레이어"가 밟고 있으면
-// 나는 반전 상태가 된다 (밟는 사람은 그 효과를 자기 자신에게는 적용받지 않음).
 function computeInversion(name, positions){
   const lvl = L();
   if(!lvl.gravityPads || !lvl.gravityPads.length) return false;
@@ -874,8 +787,7 @@ function playBgm(){
   bgm.currentTime = 0;
   bgm.volume = bgmVolume;
   bgm.play().catch(err=>{
-    console.warn('[BGM] 재생 실패:', err && err.name, err && err.message,
-      '— BGM.mp3 파일이 html과 같은 폴더에 있는지, 자동재생이 차단된 건 아닌지 확인해보세요.');
+    console.warn('[BGM] 재생 실패:', err && err.name, err && err.message);
   });
 }
 function stopBgm(){
@@ -891,7 +803,7 @@ function playSfx(id){
   if(!el) return;
   el.currentTime = 0;
   el.volume = sfxVolume;
-  el.play().catch(()=>{ /* e.g. blocked before first user gesture; harmless */ });
+  el.play().catch(()=>{});
 }
 
 function renderLogin(){
@@ -998,24 +910,18 @@ function renderReadyList(){
   }).join('');
 }
 
-// browsers only allow audio.play() reliably inside a direct user gesture.
-// "둘 다 준비완료"는 나중에 비동기로(상대방 신호로) 오는 경우가 많아서 그 시점엔
-// 제스처가 아니라고 판단해 재생이 막힐 수 있음 — 그래서 R/버튼을 누르는 이 순간에
-// 미리 한 번 play()+즉시 pause()로 "잠금 해제"만 해둔다. 실제 재생은 이후 playBgm()에서.
-let bgmRealPlayRequested = false; // true once the game has actually asked to play (not just the unlock priming)
+let bgmRealPlayRequested = false;
 
 function unlockBgm(){
   const bgm = document.getElementById('bgm');
   if(!bgm || bgm.dataset.unlocked) return;
   bgm.play().then(()=>{
     bgm.dataset.unlocked = '1';
-    // if the real game-start playback already kicked in while this promise was
-    // pending, do NOT pause it — that's exactly what caused the AbortError
     if(!bgmRealPlayRequested){
       bgm.pause();
       bgm.currentTime = 0;
     }
-  }).catch(()=>{ /* still locked; playBgm() will just try again later */ });
+  }).catch(()=>{});
 }
 
 function toggleMyReady(){
@@ -1079,9 +985,6 @@ function renderShell(){
   setupMobileControls();
 }
 
-// 화면 우측 상단 구석에 완전히 고정되는 설정 버튼. top-bar 안의 다른 요소(스테이지
-// 표시, 플레이어 칩 등) 길이에 영향받지 않도록 top-bar 밖에서 position:fixed로 따로 둠.
-// 최초 한 번만 body에 만들어두고, 게임 화면(renderShell)에 들어올 때만 보여줬다가 나갈 때 숨김.
 function ensureSettingsButton(){
   let btn = document.getElementById('settingsBtn');
   if(!btn){
@@ -1097,7 +1000,6 @@ function ensureSettingsButton(){
 function showSettingsButton(){ ensureSettingsButton().style.display = 'flex'; }
 function hideSettingsButton(){ const btn = document.getElementById('settingsBtn'); if(btn) btn.style.display = 'none'; }
 
-// 나가기 / 볼륨 조절 / 레벨 초기화 / 디버그 스테이지 이동을 한 곳에 모아둔 설정 팝업.
 function openSettingsOverlay(){
   let overlay = document.getElementById('settingsOverlay');
   if(!overlay){
@@ -1242,14 +1144,11 @@ function getActivePlatforms(bridgeStates, t){
   return solids;
 }
 
-// p.y는 항상 캐릭터의 "수직 중심점"을 의미한다 (반전 여부와 무관하게 고정된 기준).
 let diedThisFrame = false;
-// 발판 아이템: 충전한 채로 점프하면 "무장" 상태가 되고, 포물선의 정점(속도 방향이
-// 뒤집히는 순간)에 도달하는 프레임에 그 자리(발밑)에 발판을 스폰하도록 예약한다.
 let platformArmed = false;
 let platformArmedItemId = null;
 let platformArmedPrevVy = 0;
-let platformSpawnPending = null; // 이번 프레임에 정점에 도달했다면 {itemId, rect}
+let platformSpawnPending = null;
 
 function stepPhysics(bridgeStates, t, dt, inverted){
   inverted = !!inverted;
@@ -1259,18 +1158,17 @@ function stepPhysics(bridgeStates, t, dt, inverted){
   const lvl = L();
   const sp = startPos();
   const lvlH = lvl.height || 400;
-  if(p.onGround) platformArmed = false; // 착지해있는 동안은 무장 상태를 새로 시작할 준비만 함
+  if(p.onGround) platformArmed = false;
   let moveX = 0;
   if(keys.has('ArrowLeft')||keys.has('KeyA')) moveX -= 1;
   if(keys.has('ArrowRight')||keys.has('KeyD')) moveX += 1;
   p.vx = moveX * MOVE_SPEED;
 
-  const gDir = inverted ? -1 : 1; // 중력이 끌어당기는 방향 (반전 시 위쪽 = 천장 방향)
+  const gDir = inverted ? -1 : 1;
   if((keys.has('Space')||keys.has('ArrowUp')||keys.has('KeyW')) && p.onGround){
-    p.vy = JUMP_V * gDir; // 지금 붙어있는 면에서 멀어지는 방향으로 점프
+    p.vy = JUMP_V * gDir;
     p.onGround = false;
     playSfx('sfxJump');
-    // 발판 아이템을 충전하고 있었다면, 이번 점프의 정점에서 발판을 스폰하도록 무장한다.
     const chargedItem = (lvl.platformItems||[]).find(pi=>
       roomRowState.platformCharge && roomRowState.platformCharge[pi.id] === myName
     );
@@ -1317,11 +1215,9 @@ function stepPhysics(bridgeStates, t, dt, inverted){
   for(const s of solids){
     if(rectsOverlap(b,s)){
       if(p.vy > 0){
-        // 위에서 아래로 내려오다 어떤 면의 윗면에 닿음 (일반 착지 / 반전 상태에서의 "충돌")
         if(!wasOnGround && p.vy > 3){ landingSquash = Math.min(1, p.vy / 14); spawnLandingBurst(p.x, s.y, '#4aa8ff', landingSquash); }
         p.y = s.y - PH/2; p.onGround = true; p.vy = 0; if(s.__mpIndex !== undefined) lastLandedMpIndex = s.__mpIndex;
       } else if(p.vy < 0){
-        // 아래에서 위로 올라가다 어떤 면의 아랫면에 닿음 (반전 상태에서 천장에 착지 / 일반 상태에서 머리 부딪힘)
         if(!wasOnGround && p.vy < -3){ landingSquash = Math.min(1, -p.vy / 14); spawnLandingBurst(p.x, s.y+s.h, '#4aa8ff', landingSquash); }
         p.y = s.y + s.h + PH/2; p.onGround = true; p.vy = 0; if(s.__mpIndex !== undefined) lastLandedMpIndex = s.__mpIndex;
       }
@@ -1340,11 +1236,6 @@ function stepPhysics(bridgeStates, t, dt, inverted){
 
   if(p.y > killY()){ p.x = sp.x; p.y = sp.y; p.vx = 0; p.vy = 0; diedThisFrame = true; }
   if(p.y < -60){ p.x = sp.x; p.y = sp.y; p.vx = 0; p.vy = 0; diedThisFrame = true; }
-  // 일반 중력: 위쪽(캔버스 상단)만 막고, 아래쪽은 막지 않는다 — 그래야 구덩이로
-  // 떨어졌을 때 killY()를 실제로 넘어서서 시작점으로 리스폰되는 게 정상 동작한다.
-  // 반전 중력: 반대로 아래쪽(캔버스 하단)만 막는다. 위쪽은 일부러 막지 않는데,
-  // 천장이 끊긴 구간에서 발판을 놓치면 그대로 화면 위로 계속 날아가서
-  // p.y < -60 낙사 체크에 걸려 시작점으로 리스폰돼야 하기 때문.
   if(!inverted){
     if(p.y - PH/2 < 0) p.y = PH/2;
   } else {
@@ -1354,21 +1245,18 @@ function stepPhysics(bridgeStates, t, dt, inverted){
   if(p.x > lvl.width - PW/2) p.x = lvl.width - PW/2;
 }
 
-// 압력판/발판은 전부 "위에서 밟는" 형태이므로, 중심점 기준 y에서 발 위치(중심+PH/2)로
-// 환산해서 비교한다. 로컬/원격 위치 모두 동일한 좌표계를 쓰므로 그대로 적용 가능.
 function isOnPad(pos, rect){
   const feetY = pos.y + PH/2;
   return pos.x > rect.x && pos.x < rect.x+rect.w && feetY >= rect.y-5 && feetY <= rect.y+5;
 }
 
-const PIXEL_SIZES = [3, 4, 5, 6]; // discrete sizes so trail reads as blocky pixels, not smooth dots
-// 방에서 나간 사람의 캐릭터가 빨갛게 깜빡이는(FLASH) 시간, 그리고 파티클까지 다 사라지는 총 시간
+const PIXEL_SIZES = [3, 4, 5, 6];
 const DISSOLVE_FLASH_MS = 220;
 const DISSOLVE_TOTAL_MS = 700;
 
 function spawnTrailParticle(x, y, colorHex){
   if(particles.length > 220) particles.splice(0, particles.length - 220);
-  const grid = 2; // snap to a small grid for a chunkier, less "smooth" look
+  const grid = 2;
   particles.push({
     x: Math.round((x + (Math.random()-0.5)*8) / grid) * grid,
     y: Math.round((y - 2 + (Math.random()-0.5)*5) / grid) * grid,
@@ -1399,7 +1287,6 @@ function spawnLandingBurst(x, y, colorHex, intensity){
   }
   if(particles.length > 220) particles.splice(0, particles.length - 220);
 }
-// 방을 나간 플레이어의 마지막 위치에서 사방으로 픽셀이 흩어지는 연출
 function spawnDissolveBurst(x, y){
   const count = 22;
   for(let i = 0; i < count; i++){
@@ -1420,14 +1307,13 @@ function spawnDissolveBurst(x, y){
 }
 function updateAndDrawParticles(dt){
   const wasSmoothing = ctx.imageSmoothingEnabled;
-  ctx.imageSmoothingEnabled = false; // keep the squares crisp/blocky, no anti-aliasing blur
+  ctx.imageSmoothingEnabled = false;
   for(let i = particles.length - 1; i >= 0; i--){
     const p = particles[i];
     p.x += p.vx * dt;
     p.y += p.vy * dt;
     p.life -= p.decay * dt;
     if(p.life <= 0){ particles.splice(i, 1); continue; }
-    // shrink in whole-pixel steps instead of smoothly, so it still reads as "pixels" while fading
     const steppedLife = Math.ceil(p.life * 4) / 4;
     const s = Math.max(1, Math.round(p.size * steppedLife));
     ctx.globalAlpha = Math.max(0, p.life) * 0.7;
@@ -1438,7 +1324,6 @@ function updateAndDrawParticles(dt){
   ctx.imageSmoothingEnabled = wasSmoothing;
 }
 
-// 나간 플레이어들의 "빨갛게 깜빡 → 픽셀로 흩어짐" 연출을 매 프레임 갱신/렌더링
 function updateAndDrawDissolves(t){
   Object.entries(dissolvingPlayers).forEach(([name, d])=>{
     const elapsed = t - d.start;
@@ -1456,6 +1341,48 @@ function updateAndDrawDissolves(t){
   });
 }
 
+// 상대 플레이어는 좌표만 받아오므로, 실제로 발판/천장 위에 닿아있는지를 직접
+// 확인해서 착지 순간을 감지한다 (706과 동일한 접근, 다만 중력 반전을 고려해
+// "발"이 붙는 면이 위/아래 어느 쪽인지 inverted 여부로 분기한다).
+function isRemoteStandingOnSolid(pos, solids, inverted){
+  const half = PW/2;
+  for(const s of solids){
+    if(pos.x + half > s.x && pos.x - half < s.x + s.w){
+      if(!inverted){
+        if(Math.abs((pos.y + PH/2) - s.y) <= 6) return true;
+      } else {
+        if(Math.abs((pos.y - PH/2) - (s.y + s.h)) <= 6) return true;
+      }
+    }
+  }
+  return false;
+}
+
+function updateRemoteSquash(remotePositions, solids, dt, inversionMap){
+  Object.entries(remotePositions).forEach(([name, pos])=>{
+    const inverted = !!inversionMap[name];
+    const prevY = remotePrevY[name];
+    const vy = prevY !== undefined ? (pos.y - prevY) : 0;
+    const grounded = isRemoteStandingOnSolid(pos, solids, inverted);
+    const wasGrounded = remoteWasGrounded[name] || false;
+    if(grounded && !wasGrounded){
+      const prevVy = remotePrevVy[name] || 0;
+      if(Math.abs(prevVy) > 2){
+        remoteSquash[name] = Math.min(1, Math.abs(prevVy) / 14);
+        const contactY = inverted ? pos.y - PH/2 : pos.y + PH/2;
+        spawnLandingBurst(pos.x, contactY, '#facc15', remoteSquash[name]);
+      }
+    }
+    remoteWasGrounded[name] = grounded;
+    remotePrevVy[name] = vy;
+    remotePrevY[name] = pos.y;
+  });
+  Object.keys(remoteSquash).forEach(name=>{
+    remoteSquash[name] *= Math.pow(0.8, dt || 1);
+    if(remoteSquash[name] < 0.02) remoteSquash[name] = 0;
+  });
+}
+
 function drawPlayer(cx,cy,color,label,squash,inverted){
   squash = squash || 0;
   inverted = !!inverted;
@@ -1469,7 +1396,6 @@ function drawPlayer(cx,cy,color,label,squash,inverted){
   ctx.fillStyle = '#050810';
   ctx.textAlign = 'center';
   if(inverted){
-    // 반전 상태: 천장에 발이 붙어있고 머리는 아래로 매달린 모습 → 눈은 아래쪽에
     ctx.fillRect(cx-6, top+h-12, 4,4); ctx.fillRect(cx+2, top+h-12, 4,4);
     ctx.fillStyle = '#c7d1d9'; ctx.font = '10px monospace';
     ctx.fillText(label + ' ▲', cx, top+h+14);
@@ -1498,7 +1424,6 @@ function drawBattery(cx, cy){
   ctx.restore();
 }
 
-// 발판 아이템 (원래 자리에 놓여있는 픽업 상태) 아이콘
 function drawPlatformItem(cx, cy){
   ctx.save();
   ctx.translate(cx, cy);
@@ -1514,8 +1439,6 @@ function drawPlatformItem(cx, cy){
   ctx.restore();
 }
 
-// 발판 아이템이 소환한 "임시 발판" — 남은 시간이 얼마 없을수록 옅어져서
-// 곧 사라진다는 걸 시각적으로 알려준다.
 function drawSpawnedPlatform(rect, remainingFrac){
   ctx.save();
   ctx.globalAlpha = 0.35 + 0.5 * Math.max(0, Math.min(1, remainingFrac));
@@ -1528,16 +1451,15 @@ function drawSpawnedPlatform(rect, remainingFrac){
   ctx.restore();
 }
 
-// 발판 아이템을 충전 중인 플레이어의 몸 주변에 확실하게 보이는 그라데이션 + 깜빡임 효과
 function drawChargeAura(cx, cy, t){
-  const blink = 0.5 + 0.5 * Math.sin(t / 140); // 0~1, 뚜렷하게 눈에 띄는 깜빡임 주기
-  const alpha = 0.22 + 0.7 * blink; // 확 밝아졌다 확 옅어짐
+  const blink = 0.5 + 0.5 * Math.sin(t / 140);
+  const alpha = 0.22 + 0.7 * blink;
   const radius = PW * 1.35;
   ctx.save();
   const grad = ctx.createRadialGradient(cx, cy, 2, cx, cy, radius);
-  grad.addColorStop(0,   `rgba(207,250,254,${Math.min(1, alpha * 1.15)})`); // 중심부: 밝은 하늘색
-  grad.addColorStop(0.45,`rgba(34,211,238,${alpha * 0.85})`);               // 중간: 청록
-  grad.addColorStop(1,   'rgba(34,211,238,0)');                             // 바깥: 투명
+  grad.addColorStop(0,   `rgba(207,250,254,${Math.min(1, alpha * 1.15)})`);
+  grad.addColorStop(0.45,`rgba(34,211,238,${alpha * 0.85})`);
+  grad.addColorStop(1,   'rgba(34,211,238,0)');
   ctx.fillStyle = grad;
   ctx.beginPath();
   ctx.ellipse(cx, cy, radius, radius * 0.85, 0, 0, Math.PI * 2);
@@ -1615,7 +1537,6 @@ function drawLevel(remotePositions, bridgeStates, t, dt){
     ctx.fillText('LAUNCH', lp.padB.x, lp.padB.y-4);
   });
 
-  // 중력 반전 발판
   (lvl.gravityPads||[]).forEach(pad=>{
     const pressed = isOnPad(myPlayer, pad.rect) || Object.values(remotePositions).some(pos=>isOnPad(pos, pad.rect));
     ctx.fillStyle = pressed ? 'rgba(192,132,252,0.55)' : 'rgba(167,139,250,0.28)';
@@ -1626,7 +1547,6 @@ function drawLevel(remotePositions, bridgeStates, t, dt){
     ctx.fillText('GRAV', pad.rect.x, pad.rect.y-4);
   });
 
-  // 게이트 (배터리형 / 일반형 공용 색상 규칙 적용, 배터리 1개 또는 여러 개 모두 지원)
   lvl.gates.forEach(g=>{
     const state = gateColorState(g);
     const clr = GATE_COLORS[state];
@@ -1658,7 +1578,6 @@ function drawLevel(remotePositions, bridgeStates, t, dt){
     });
   });
 
-  // 배터리 아이템 (아직 문에 장착되지 않은 것만 그림)
   const allPosForBattery = { ...remotePositions, [myName]: myPlayer };
   (lvl.batteries||[]).forEach(bat=>{
     const delivered = roomRowState.batteryCharged && roomRowState.batteryCharged[bat.id];
@@ -1676,8 +1595,6 @@ function drawLevel(remotePositions, bridgeStates, t, dt){
     }
   });
 
-  // 발판 아이템: 사용 가능하면 원래 자리에 아이콘, 소환된 임시 발판이 활성 상태면
-  // 그 발판도 함께 그린다 (둘 다 켜질 수는 없음 — 소환 중엔 아이콘이 안 보임).
   (lvl.platformItems||[]).forEach(item=>{
     const active = roomRowState.platformActive && roomRowState.platformActive[item.id];
     if(active && t < active.until){
@@ -1688,23 +1605,30 @@ function drawLevel(remotePositions, bridgeStates, t, dt){
     }
   });
 
-  if(Math.random() < 0.75) spawnTrailParticle(myPlayer.x, myPlayer.y, '#4aa8ff');
-  Object.values(remotePositions).forEach(pos=>{
-    if(Math.random() < 0.75) spawnTrailParticle(pos.x, pos.y, '#facc15');
+  const solids = getActivePlatforms(bridgeStates, t);
+  const allPosForInv = { ...remotePositions, [myName]: myPlayer };
+  const myInv = computeInversion(myName, allPosForInv);
+  const remoteInv = {};
+  Object.keys(remotePositions).forEach(name=>{
+    remoteInv[name] = computeInversion(name, allPosForInv);
+  });
+
+  if(Math.random() < 0.75) spawnTrailParticle(myPlayer.x, myPlayer.y + (myInv ? -PH/2 : PH/2), '#4aa8ff');
+  Object.entries(remotePositions).forEach(([name,pos])=>{
+    if(Math.random() < 0.75) spawnTrailParticle(pos.x, pos.y + (remoteInv[name] ? -PH/2 : PH/2), '#facc15');
   });
   updateAndDrawParticles(dt || 1);
   updateAndDrawDissolves(t);
 
-  const allPosForInv = { ...remotePositions, [myName]: myPlayer };
+  updateRemoteSquash(remotePositions, solids, dt, remoteInv);
+
   Object.entries(remotePositions).forEach(([name,pos])=>{
-    const inv = computeInversion(name, allPosForInv);
     if(isPlayerCharged(name)) drawChargeAura(pos.x, pos.y, t);
-    drawPlayer(pos.x, pos.y, '#facc15', name, 0, inv);
+    drawPlayer(pos.x, pos.y, '#facc15', name, remoteSquash[name] || 0, remoteInv[name]);
   });
-  const myInv = computeInversion(myName, allPosForInv);
   if(isPlayerCharged(myName)) drawChargeAura(myPlayer.x, myPlayer.y, t);
   drawPlayer(myPlayer.x, myPlayer.y, '#4aa8ff', myName, landingSquash, myInv);
-  landingSquash *= Math.pow(0.8, dt || 1); // decay the squash back to normal over a few frames
+  landingSquash *= Math.pow(0.8, dt || 1);
   if(landingSquash < 0.02) landingSquash = 0;
 }
 
@@ -1742,10 +1666,6 @@ function getInterpolatedRemotePositions(){
   return out;
 }
 
-// 렌더링용(부드러운 보간, 일부러 약간의 지연을 둠)과는 별개로, 게이트/발판/중력반전처럼
-// "즉각 반응해야 하는" 판정에는 지연을 더하지 않은 가장 최근 원격 좌표를 쓴다.
-// 이전에는 판정에도 보간 좌표(RENDER_DELAY만큼 지연됨)를 그대로 썼는데, 그게 협동
-// 기믹(특히 중력 발판)에서 "밟았는데 한참 있다 반응한다"는 체감 딜레이의 원인이었다.
 function getLatestRemotePositions(){
   const out = {};
   Object.entries(lastRemoteSnapshots).forEach(([name, buf])=>{
@@ -1803,11 +1723,8 @@ function gameLoop(){
   const bridgeStates = {};
   lvl.bridges.forEach(b=>{ bridgeStates[b.id] = isBridgeActive(b, myPlayer, latestRemote); });
 
-  // 이번 프레임의 중력 반전 여부 (물리 계산 전에 미리 판정) - 지연 없는 최신 좌표 사용
   const iAmInverted = computeInversion(myName, { ...latestRemote, [myName]: myPlayer });
 
-  // 반전된 순간에는 발판 탑승 로직을 끈다 — 안 그러면 발판이 계속 붙잡고 있어서
-  // 천장으로 다시 빨려 올라가는 전환이 어색해짐 (일반 중력 전용 로직이라 반전과는 안 맞음)
   if(!iAmInverted && riddenMpIndex !== null && lvl.movingPlatforms[riddenMpIndex]){
     const mp = lvl.movingPlatforms[riddenMpIndex];
     const isVertical = mp.x0 === mp.x1;
@@ -1866,7 +1783,6 @@ function gameLoop(){
     }
   });
 
-  // 배터리 획득 / 전달 (한 사람이 동시에 여러 개를 들 수는 없음)
   const iAlreadyHoldSomeBattery = (lvl.batteries||[]).some(b2=>
     roomRowState.batteryHeld && roomRowState.batteryHeld[b2.id] === myName
   );
@@ -1889,7 +1805,6 @@ function gameLoop(){
     }
   });
 
-  // 발판 아이템: 충전(픽업) + 점프 시 소환
   const iAlreadyHoldPlatformCharge = (lvl.platformItems||[]).some(pi=>
     roomRowState.platformCharge && roomRowState.platformCharge[pi.id] === myName
   );
@@ -1946,7 +1861,7 @@ function gameLoop(){
     const req = gateRequiredBatteryIds(g);
     if(req.length){
       const allCharged = req.every(bid=> roomRowState.batteryCharged && roomRowState.batteryCharged[bid]);
-      if(!allCharged) return; // 배터리가 전부 장착되기 전엔 압력판이 반응하지 않음
+      if(!allCharged) return;
     }
     const iOnA = isOnPad(myPlayer, g.plateA), iOnB = isOnPad(myPlayer, g.plateB);
     let otherOnA=false, otherOnB=false;
@@ -2012,7 +1927,7 @@ function gameLoop(){
     banner.innerHTML = '';
   }
 
-  const remoteSmooth = getInterpolatedRemotePositions(); // 렌더링만 부드럽게, 판정은 위에서 이미 최신 좌표로 끝냈음
+  const remoteSmooth = getInterpolatedRemotePositions();
   drawLevel(remoteSmooth, bridgeStates, now, dt);
   rafId = requestAnimationFrame(gameLoop);
 }
@@ -2057,7 +1972,7 @@ async function shareResult(won){
   }
   const shareData = { title: 'Station 605', text, url: location.href };
   if(navigator.share){
-    try{ await navigator.share(shareData); }catch(e){ /* 사용자가 취소한 경우도 여기로 옴 — 무시 */ }
+    try{ await navigator.share(shareData); }catch(e){}
   } else {
     const fullText = `${text}\n${location.href}`;
     try{
@@ -2117,6 +2032,10 @@ function applyLevelReset(lvl){
   launchArmed = {};
   localPadTouch = {};
   landingSquash = 0;
+  remoteSquash = {};
+  remotePrevY = {};
+  remotePrevVy = {};
+  remoteWasGrounded = {};
   riddenMpIndex = null;
   riddenMpPrevRect = null;
   lastFrameTime = null;
@@ -2133,10 +2052,6 @@ function applyLevelReset(lvl){
   if(banner) banner.innerHTML = '';
 }
 
-// If I'm the only one left in the room, arrange for the WHOLE room to be wiped
-// the moment I disconnect (even by just closing the tab, not clicking "나가기").
-// If someone else is around, only my own presence entry should disappear when I go.
-// Re-evaluated every time the player list changes, on every connected client.
 function updatePresenceCleanupStrategy(){
   if(!db || !roomCode || !myPlayerRef) return;
   if(onlineNames.size <= 1){
@@ -2156,9 +2071,6 @@ function setupRealtime(){
     const val = snap.val() || {};
     const newNames = new Set(Object.keys(val));
 
-    // 누가 나갔는지 감지 → 마지막 위치에서 빨갛게 변했다가 픽셀로 흩어지는 연출 시작.
-    // 이걸 안 해주면 lastRemoteSnapshots에 남은 마지막 위치를 계속 보간(extrapolate)해서
-    // 그려주는 바람에, 나간 사람이 시체처럼 화면에 계속 남아있게 됨.
     onlineNames.forEach(name=>{
       if(name === myName) return;
       if(!newNames.has(name)){
@@ -2289,10 +2201,6 @@ async function leaveRoom(){
   inRoomSession = false;
   if(!db || !roomCode){ renderLogin(); return; }
   stopBgm();
-  // 다른 무엇보다 먼저 위치 전송 타이머부터 꺼야 함 — 안 그러면 아래 트랜잭션이
-  // 네트워크를 오가는 그 짧은 사이에도 이 타이머가 40ms마다 계속 내 위치를
-  // 다시 써버려서, 트랜잭션이 지운 내 자리가 바로 되살아나 버림 (그래서
-  // 나갔는데도 상대방 화면엔 계속 접속된 것처럼 보였던 것).
   if(posSendTimer){ clearInterval(posSendTimer); posSendTimer = null; }
   const leavingCode = roomCode;
   const leavingName = myName;
@@ -2315,15 +2223,9 @@ async function leaveRoom(){
   }catch(e){ console.error(e); }
 
   teardownRealtime();
-  // 나가기가 확정되면 상태를 깔끔하게 초기화하기 위해 페이지를 한 번 강제로 새로고침한다.
   location.reload();
 }
 
-// Firebase의 onDisconnect()는 서버가 연결 끊김을 감지할 때까지 시간이 걸릴 수 있음
-// (새로고침/앱 종료 등 "깔끔한" 이탈에도 몇 초씩 걸리는 경우가 있음). 그래서
-// pagehide/beforeunload 시점에 내 자리를 미리 지워서 다른 사람 화면에 더 빨리
-// (거의 즉시) 반영되게 한다 — onDisconnect()는 이 프로액티브 정리가 실패했을 때를
-// 대비한 안전망으로 계속 등록해둔 채로 둔다.
 function setupUnloadCleanup(){
   const cleanup = ()=>{
     if(myPlayerRef){
@@ -2351,8 +2253,6 @@ function initGame(){
   setupUnloadCleanup();
 }
 
-// 새로고침/탭 닫기 등으로 방을 나가려 할 때 브라우저 자체의 확인창을 띄운다.
-// (보안상 브라우저가 커스텀 문구 대신 자체 안내문을 보여주지만, 실수로 나가는 것을 막아준다.)
 window.addEventListener('beforeunload', (e)=>{
   if(inRoomSession){
     e.preventDefault();
@@ -2363,10 +2263,8 @@ window.addEventListener('beforeunload', (e)=>{
 const bgmEl = document.getElementById('bgm');
 if(bgmEl){
   bgmEl.addEventListener('error', ()=>{
-    console.warn('[BGM] BGM.mp3를 불러오지 못했습니다. 파일이 이 html과 같은 폴더에 있는지, 파일명 대소문자가 정확한지 확인해보세요.');
+    console.warn('[BGM] BGM.mp3를 불러오지 못했습니다.');
   });
-  // cache-bust so a replaced BGM.mp3 is always fetched fresh instead of
-  // reusing a stale (previously-broken) cached copy from the browser/CDN
   bgmEl.src = 'BGM.mp3?v=' + Date.now();
   bgmEl.load();
 }
@@ -2375,7 +2273,7 @@ if(bgmEl){
   const el = document.getElementById(id);
   if(!el) return;
   el.addEventListener('error', ()=>{
-    console.warn(`[SFX] ${file}를 불러오지 못했습니다. html과 같은 폴더에 있는지 확인해보세요.`);
+    console.warn(`[SFX] ${file}를 불러오지 못했습니다.`);
   });
   el.src = file + '?v=' + Date.now();
   el.load();
