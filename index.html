@@ -385,7 +385,7 @@ let onlineNames = new Set();
 let dissolvingPlayers = {};
 let realtimeRefs = {};
 let myPlayerRef = null;
-let roomRowState = { level:0, bridgesOn:{}, gatesOpen:{}, crumbleStart:{}, ready:{}, batteryHeld:{}, batteryCharged:{}, platformCharge:{}, platformActive:{}, gameStarted:false, startTime:null, dead:false, deathReason:null, won:false };
+let roomRowState = { level:0, bridgesOn:{}, gatesOpen:{}, crumbleStart:{}, ready:{}, batteryHeld:{}, batteryCharged:{}, slotsFilled:{}, platformCharge:{}, platformActive:{}, gameStarted:false, startTime:null, dead:false, deathReason:null, won:false };
 
 let gamePhase = 'briefing';
 let oxygenTriggerSent = false;
@@ -394,7 +394,7 @@ let sfxVolume = 1.0;
 const OXYGEN_TOTAL_MS = 10 * 60 * 1000;
 
 function defaultRoomState(){
-  return { level:0, bridgesOn:{}, gatesOpen:{}, crumbleStart:{}, ready:{}, batteryHeld:{}, batteryCharged:{}, platformCharge:{}, platformActive:{}, gameStarted:false, startTime:null, dead:false, deathReason:null, won:false };
+  return { level:0, bridgesOn:{}, gatesOpen:{}, crumbleStart:{}, ready:{}, batteryHeld:{}, batteryCharged:{}, slotsFilled:{}, platformCharge:{}, platformActive:{}, gameStarted:false, startTime:null, dead:false, deathReason:null, won:false };
 }
 
 const GRAVITY = 0.65, JUMP_V = -11.5, MOVE_SPEED = 3.4;
@@ -426,11 +426,32 @@ function gateBatterySlot(g, batId){
   if(g.batteryId === batId) return g.batterySlot;
   return null;
 }
+function slotKey(g, slotId){ return g.id + ':' + slotId; }
+function isSlotFilled(g, slotId){
+  return !!(roomRowState.slotsFilled && roomRowState.slotsFilled[slotKey(g, slotId)]);
+}
+
+// Consume the carried battery and fill one slot atomically, even if two players
+// reach the same slot together. A transaction retry must not consume it twice.
+function depositBattery(state, level, player, batteryId, key){
+  if(!state || (state.level || 0) !== level || state.dead || state.won) return;
+  if(!state.batteryHeld || state.batteryHeld[batteryId] !== player) return;
+  if(state.batteryCharged && state.batteryCharged[batteryId]) return;
+  if(state.slotsFilled && state.slotsFilled[key]) return;
+  state.slotsFilled = state.slotsFilled || {};
+  state.batteryCharged = state.batteryCharged || {};
+  state.slotsFilled[key] = batteryId;
+  state.batteryCharged[batteryId] = true;
+  delete state.batteryHeld[batteryId];
+  return state;
+}
+const pendingBatteryDeposits = new Set();
+
 function gateColorState(g){
   if(roomRowState.gatesOpen && roomRowState.gatesOpen[g.id]) return 'open';
   const req = gateRequiredBatteryIds(g);
   if(req.length){
-    const allCharged = req.every(bid => roomRowState.batteryCharged && roomRowState.batteryCharged[bid]);
+    const allCharged = req.every(bid => isSlotFilled(g, bid));
     return allCharged ? 'charged' : 'uncharged';
   }
   return 'locked';
@@ -1278,10 +1299,8 @@ function stepPhysics(bridgeStates, t, dt, inverted){
   }
 
   if(p.y > killY()){ p.x = sp.x; p.y = sp.y; p.vx = 0; p.vy = 0; diedThisFrame = true; }
-  if(p.y < -60){ p.x = sp.x; p.y = sp.y; p.vx = 0; p.vy = 0; diedThisFrame = true; }
-  if(!inverted){
-    if(p.y - PH/2 < 0) p.y = PH/2;
-  } else {
+  if(p.y + PH/2 < 0){ p.x = sp.x; p.y = sp.y; p.vx = 0; p.vy = 0; diedThisFrame = true; }
+  if(inverted){
     if(p.y + PH/2 > lvlH) p.y = lvlH - PH/2;
   }
   if(p.x < PW/2) p.x = PW/2;
@@ -1614,7 +1633,7 @@ function drawLevel(remotePositions, bridgeStates, t, dt){
     gateRequiredBatteryIds(g).forEach(bid=>{
       const slot = gateBatterySlot(g, bid);
       if(!slot) return;
-      const charged = !!(roomRowState.batteryCharged && roomRowState.batteryCharged[bid]);
+      const charged = isSlotFilled(g, bid);
       ctx.strokeStyle = charged ? '#e34848' : 'rgba(138,152,168,0.7)';
       ctx.setLineDash(charged ? [] : [4,4]);
       ctx.strokeRect(slot.x, slot.y, slot.w, slot.h);
@@ -1837,18 +1856,25 @@ function gameLoop(){
   (lvl.batteries||[]).forEach(bat=>{
     const alreadyDelivered = roomRowState.batteryCharged && roomRowState.batteryCharged[bat.id];
     if(alreadyDelivered) return;
-    const gate = lvl.gates.find(g=>gateRequiredBatteryIds(g).includes(bat.id));
     const heldBy = roomRowState.batteryHeld && roomRowState.batteryHeld[bat.id];
     const myBox = { x: myPlayer.x-PW/2, y: myPlayer.y-PH/2, w:PW, h:PH };
     if(!heldBy){
       if(!iAlreadyHoldSomeBattery && rectsOverlap(myBox, bat)){
         db.ref(`rooms605/${roomCode}/state/batteryHeld/${bat.id}`).transaction(cur=> cur ? cur : myName);
       }
-    } else if(heldBy === myName && gate){
-      const slot = gateBatterySlot(gate, bat.id);
-      if(slot && rectsOverlap(myBox, slot)){
-        db.ref(`rooms605/${roomCode}/state/batteryCharged/${bat.id}`).set(true);
-        db.ref(`rooms605/${roomCode}/state/batteryHeld/${bat.id}`).remove();
+    } else if(heldBy === myName){
+      const target = lvl.gates.flatMap(g => gateRequiredBatteryIds(g).map(id =>
+        ({g, id, rect:gateBatterySlot(g, id)})
+      )).find(s => s.rect && !isSlotFilled(s.g, s.id) && rectsOverlap(myBox, s.rect));
+      const pendingKey = roomCode + ':' + currentLevel + ':' + bat.id;
+      if(target && !pendingBatteryDeposits.has(pendingKey)){
+        const level = currentLevel, player = myName;
+        const key = slotKey(target.g, target.id);
+        pendingBatteryDeposits.add(pendingKey);
+        db.ref(`rooms605/${roomCode}/state`).transaction(
+          state => depositBattery(state, level, player, bat.id, key)
+        ).catch(err => console.warn('Battery deposit failed:', err.code || err.message))
+          .finally(() => pendingBatteryDeposits.delete(pendingKey));
       }
     }
   });
@@ -1908,7 +1934,7 @@ function gameLoop(){
     if(already) return;
     const req = gateRequiredBatteryIds(g);
     if(req.length){
-      const allCharged = req.every(bid=> roomRowState.batteryCharged && roomRowState.batteryCharged[bid]);
+      const allCharged = req.every(bid=> isSlotFilled(g, bid));
       if(!allCharged) return;
     }
     const iOnA = isOnPad(myPlayer, g.plateA), iOnB = isOnPad(myPlayer, g.plateB);
@@ -1965,6 +1991,7 @@ function gameLoop(){
           current.crumbleStart = {};
           current.batteryHeld = {};
           current.batteryCharged = {};
+          current.slotsFilled = {};
           current.platformCharge = {};
           current.platformActive = {};
           return current;
@@ -2163,6 +2190,7 @@ function setupRealtime(){
     roomRowState.ready = val.ready || {};
     roomRowState.batteryHeld = val.batteryHeld || {};
     roomRowState.batteryCharged = val.batteryCharged || {};
+    roomRowState.slotsFilled = val.slotsFilled || {};
     roomRowState.platformCharge = val.platformCharge || {};
     roomRowState.platformActive = val.platformActive || {};
     roomRowState.gameStarted = !!val.gameStarted;
