@@ -724,7 +724,7 @@ const LEVELS = [
   },
   {
     // Stage 10: layout based on the evacuation-route sketch.
-    width: 1040, height: 420, start:{x:55,y:346},
+    width: 1040, height: 420, start:{x:40,y:136},
     grounds: [
       {x:0,y:366,w:120,h:54},
       {x:0,y:259,w:122,h:43},
@@ -747,19 +747,21 @@ const LEVELS = [
       {id:'pf3', x:852,y:164,w:30,h:12}
     ],
     movingPlatforms: [
-      {x0:620,y0:341,x1:890,y1:341,w:64,h:19,period:3600}
+      {x0:620,y0:341,x1:780,y1:341,w:64,h:19,period:3600}
     ],
-    bridges: [], crumbles: [], hazards: [], launchPads: [],
+    bridges: [],
+    crumbles: [
+      {id:'c1', rect:{x:220,y:142,w:54,h:18}, warnMs:650, fallMs:2200}
+    ],
+    hazards: [], launchPads: [],
     batteries: [
       {id:'bat1', x:5,y:322,w:22,h:26},
-      {id:'bat2', x:5,y:218,w:22,h:26},
-      {id:'bat3', x:230,y:142,w:22,h:26}
+      {id:'bat2', x:5,y:218,w:22,h:26}
     ],
     gates: [
-      {id:'g_relay', batteryIds:['bat1','bat2'],
-        batterySlots:{bat1:{x:501,y:83,w:26,h:34}, bat2:{x:501,y:83,w:26,h:34}},
+      {id:'g_relay', batteryId:'bat1', batterySlot:{x:501,y:83,w:26,h:34},
         plateA:{x:6,y:151,w:40,h:13}, plateB:{x:278,y:93,w:40,h:12}, gateX:544},
-      {id:'g_final', batteryId:'bat3', batterySlot:{x:964,y:293,w:26,h:34},
+      {id:'g_final', batteryId:'bat2', batterySlot:{x:964,y:293,w:26,h:34},
         plateA:{x:839,y:207,w:48,h:13}, plateB:{x:901,y:127,w:48,h:14}, gateX:1004}
     ]
   }
