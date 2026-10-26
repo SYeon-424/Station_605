@@ -723,41 +723,44 @@ const LEVELS = [
     ]
   },
   {
-    // Stage 10: relay two batteries through the final evacuation route.
-    width: 2080, height: 700, start:{x:40,y:580},
+    // Stage 10: layout based on the evacuation-route sketch.
+    width: 1040, height: 420, start:{x:55,y:346},
     grounds: [
-      {x:0, y:620, w:240, h:80},
-      {x:520, y:620, w:240, h:80},
-      {x:1000, y:620, w:240, h:80},
-      {x:1180, y:360, w:300, h:40},
-      {x:1700, y:360, w:380, h:40}
+      {x:0,y:366,w:120,h:54},
+      {x:0,y:259,w:122,h:43},
+      {x:0,y:167,w:124,h:40},
+      {x:276,y:106,w:43,h:314},
+      {x:319,y:195,w:55,h:26},
+      {x:494,y:377,w:117,h:43},
+      {x:748,y:250,w:292,h:37}
     ],
-    crumbles: [
-      {id:'c1', rect:{x:260,y:620,w:70,h:18}, warnMs:650, fallMs:2200},
-      {id:'c2', rect:{x:360,y:590,w:70,h:18}, warnMs:650, fallMs:2200},
-      {id:'c3', rect:{x:460,y:620,w:70,h:18}, warnMs:650, fallMs:2200}
+    ceilings: [
+      {x:206,y:0,w:188,h:75},
+      {x:437,y:0,w:129,h:76}
     ],
-    bridges: [
-      {id:'b1', rect:{x:760,y:620,w:240,h:20}, mode:'hold',
-        switchPads:[{x:680,y:600,w:56,h:10}, {x:1030,y:600,w:56,h:10}]}
+    gravityPads: [
+      {id:'gp1', rect:{x:322,y:179,w:48,h:16}}
+    ],
+    platformItems: [
+      {id:'pf1', x:87,y:236,w:27,h:10},
+      {id:'pf2', x:682,y:259,w:30,h:12},
+      {id:'pf3', x:852,y:164,w:30,h:12}
     ],
     movingPlatforms: [
-      {x0:1250,y0:620,x1:1250,y1:360,w:90,h:16,period:3600},
-      {x0:1490,y0:360,x1:1630,y1:360,w:80,h:16,period:2800}
+      {x0:620,y0:341,x1:890,y1:341,w:64,h:19,period:3600}
     ],
-    hazards: [
-      {id:'h1', rect:{x:1770,y:300,w:50,h:60}, period:2000, activeFraction:0.4}
-    ],
-    launchPads: [],
+    bridges: [], crumbles: [], hazards: [], launchPads: [],
     batteries: [
-      {id:'bat1', x:90,y:580,w:22,h:26},
-      {id:'bat2', x:1360,y:320,w:22,h:26}
+      {id:'bat1', x:5,y:322,w:22,h:26},
+      {id:'bat2', x:5,y:218,w:22,h:26},
+      {id:'bat3', x:230,y:142,w:22,h:26}
     ],
     gates: [
-      {id:'g_relay', batteryId:'bat1', batterySlot:{x:1100,y:576,w:26,h:34},
-        plateA:{x:1030,y:600,w:34,h:10}, plateB:{x:1150,y:600,w:34,h:10}, gateX:1220},
-      {id:'g_final', batteryId:'bat2', batterySlot:{x:1860,y:316,w:26,h:34},
-        plateA:{x:1920,y:340,w:34,h:10}, plateB:{x:1980,y:340,w:34,h:10}, gateX:2030}
+      {id:'g_relay', batteryIds:['bat1','bat2'],
+        batterySlots:{bat1:{x:501,y:83,w:26,h:34}, bat2:{x:501,y:83,w:26,h:34}},
+        plateA:{x:6,y:151,w:40,h:13}, plateB:{x:278,y:93,w:40,h:12}, gateX:544},
+      {id:'g_final', batteryId:'bat3', batterySlot:{x:964,y:293,w:26,h:34},
+        plateA:{x:839,y:207,w:48,h:13}, plateB:{x:901,y:127,w:48,h:14}, gateX:1004}
     ]
   }
 ];
