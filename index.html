@@ -684,7 +684,7 @@ const LEVELS = [
     ],
     crumbles: [
       { id:'c1', rect:{x:100, y:430, w:70, h:18}, warnMs:650, fallMs:2200 },
-      { id:'c2', rect:{x:10, y:480, w:70, h:18}, warnMs:650, fallMs:2200 },
+      { id:'c2', rect:{x:10, y:530, w:70, h:18}, warnMs:650, fallMs:2200 },
       { id:'c3', rect:{x:100, y:300, w:70, h:18}, warnMs:650, fallMs:2200 }
     ],
     hazards: [],
@@ -720,6 +720,44 @@ const LEVELS = [
         plateB: { x:1050, y:210, w:34, h:10 },
         gateX: 1560
       }
+    ]
+  },
+  {
+    // Stage 10: relay two batteries through the final evacuation route.
+    width: 2080, height: 700, start:{x:40,y:580},
+    grounds: [
+      {x:0, y:620, w:240, h:80},
+      {x:520, y:620, w:240, h:80},
+      {x:1000, y:620, w:240, h:80},
+      {x:1180, y:360, w:300, h:40},
+      {x:1700, y:360, w:380, h:40}
+    ],
+    crumbles: [
+      {id:'c1', rect:{x:260,y:620,w:70,h:18}, warnMs:650, fallMs:2200},
+      {id:'c2', rect:{x:360,y:590,w:70,h:18}, warnMs:650, fallMs:2200},
+      {id:'c3', rect:{x:460,y:620,w:70,h:18}, warnMs:650, fallMs:2200}
+    ],
+    bridges: [
+      {id:'b1', rect:{x:760,y:620,w:240,h:20}, mode:'hold',
+        switchPads:[{x:680,y:600,w:56,h:10}, {x:1030,y:600,w:56,h:10}]}
+    ],
+    movingPlatforms: [
+      {x0:1250,y0:620,x1:1250,y1:360,w:90,h:16,period:3600},
+      {x0:1490,y0:360,x1:1630,y1:360,w:80,h:16,period:2800}
+    ],
+    hazards: [
+      {id:'h1', rect:{x:1770,y:300,w:50,h:60}, period:2000, activeFraction:0.4}
+    ],
+    launchPads: [],
+    batteries: [
+      {id:'bat1', x:90,y:580,w:22,h:26},
+      {id:'bat2', x:1360,y:320,w:22,h:26}
+    ],
+    gates: [
+      {id:'g_relay', batteryId:'bat1', batterySlot:{x:1100,y:576,w:26,h:34},
+        plateA:{x:1030,y:600,w:34,h:10}, plateB:{x:1150,y:600,w:34,h:10}, gateX:1220},
+      {id:'g_final', batteryId:'bat2', batterySlot:{x:1860,y:316,w:26,h:34},
+        plateA:{x:1920,y:340,w:34,h:10}, plateB:{x:1980,y:340,w:34,h:10}, gateX:2030}
     ]
   }
 ];
